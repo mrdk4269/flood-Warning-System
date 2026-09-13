@@ -739,10 +739,11 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
 
 # Assign realistic dynamic timestamps to each event relative to current execution time
 def _compute_timestamps():
+    now = datetime.utcnow()
     for ev in NATIONWIDE_FLOOD_EFFECT_AREAS:
         days = ev.get("days_ago", 0)
         # Offset date
-        ev_date = NOW - timedelta(days=days)
+        ev_date = now - timedelta(days=days)
         # Format timestamp e.g. "2026-09-13T10:30:00Z"
         ev["timestamp"] = ev_date.strftime("%Y-%m-%dT%H:%M:%SZ")
         ev["date"] = ev_date.strftime("%Y-%m-%d")
@@ -768,13 +769,14 @@ def get_flood_effect_areas(
     - basin: Basin name or 'all'
     """
     _compute_timestamps()
-    cutoff_today = NOW.date()
-    cutoff_7days = (NOW - timedelta(days=7)).date()
-    cutoff_30days = (NOW - timedelta(days=30)).date()
+    now_current = datetime.utcnow()
+    cutoff_today = now_current.date()
+    cutoff_7days = (now_current - timedelta(days=7)).date()
+    cutoff_30days = (now_current - timedelta(days=30)).date()
 
     results = []
     for ev in NATIONWIDE_FLOOD_EFFECT_AREAS:
-        ev_date = (NOW - timedelta(days=ev.get("days_ago", 0))).date()
+        ev_date = (now_current - timedelta(days=ev.get("days_ago", 0))).date()
 
         # 1. Temporal filter
         if period == "today":
