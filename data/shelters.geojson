@@ -1,0 +1,121 @@
+{
+  "type": "FeatureCollection",
+  "name": "FloodGuard_Shelters",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 1,
+      "properties": {
+        "id": 1,
+        "name": "Riverdale Community Center & Relief Camp",
+        "type": "Community Center",
+        "district": "Central Basin District",
+        "address": "45 Highland Ring Road, South Sector",
+        "capacity": 850,
+        "current_occupancy": 120,
+        "contact": "+91 484 255 1090",
+        "elevation": 29.5,
+        "status": "OPEN",
+        "supplies": "Food, Clean Water, Medical Aid, Power Backup",
+        "latitude": 9.992,
+        "longitude": 76.348
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.348, 9.992]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2,
+      "properties": {
+        "id": 2,
+        "name": "Government Higher Secondary Model School",
+        "type": "School",
+        "district": "Central Basin District",
+        "address": "Opposite Civil Station, West Ridge",
+        "capacity": 1200,
+        "current_occupancy": 310,
+        "contact": "+91 484 255 3341",
+        "elevation": 24.0,
+        "status": "OPEN",
+        "supplies": "Blankets, Ration Kits, Child Care",
+        "latitude": 10.015,
+        "longitude": 76.332
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.332, 10.015]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3,
+      "properties": {
+        "id": 3,
+        "name": "Highland Ridge St. Mary's Shelter",
+        "type": "Emergency Shelter",
+        "district": "Central Basin District",
+        "address": "Hilltop Chapel Road, South Sector",
+        "capacity": 600,
+        "current_occupancy": 85,
+        "contact": "+91 484 255 8820",
+        "elevation": 34.2,
+        "status": "OPEN",
+        "supplies": "Generators, Sleeping Cots, Emergency Kitchen",
+        "latitude": 9.981,
+        "longitude": 76.362
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.362, 9.981]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4,
+      "properties": {
+        "id": 4,
+        "name": "South Plateau Municipal Stadium Complex",
+        "type": "High Ground Area",
+        "district": "Central Basin District",
+        "address": "Sports Hub Avenue, Safe Plateau",
+        "capacity": 2500,
+        "current_occupancy": 0,
+        "contact": "+91 484 255 9900",
+        "elevation": 31.0,
+        "status": "STANDBY",
+        "supplies": "Mass Tent Shelters, Helipad Access, Water Tankers",
+        "latitude": 9.974,
+        "longitude": 76.338
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.338, 9.974]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 5,
+      "properties": {
+        "id": 5,
+        "name": "North Metro Central Gymnasium",
+        "type": "Community Center",
+        "district": "Central Basin District",
+        "address": "12 Metro Bypass Road",
+        "capacity": 450,
+        "current_occupancy": 190,
+        "contact": "+91 484 255 4412",
+        "elevation": 14.5,
+        "status": "OPEN",
+        "supplies": "First Aid, Dry Food Supplies",
+        "latitude": 10.042,
+        "longitude": 76.315
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.315, 10.042]
+      }
+    }
+  ]
+}

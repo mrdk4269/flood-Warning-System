@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Operations Center | FloodGuard</title>
+  <meta name="description" content="Secure administrator command console for flood zone GIS data, river telemetry, shelter capacity, and emergency broadcasts.">
+
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+
+  <!-- Prototype Notice -->
+  <div class="disclaimer-banner">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span><strong>Authorized Administrative Portal:</strong> Manage spatial coordinates, sensor gauges, and public emergency bulletins.</span>
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="/" class="nav-brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+        </div>
+        <div>
+          <div class="brand-title">FloodGuard</div>
+          <div class="brand-subtitle">Admin Console</div>
+        </div>
+      </a>
+
+      <button class="mobile-toggle" aria-label="Toggle navigation">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+
+      <ul class="nav-links">
+        <li><a href="/" class="nav-link">Home</a></li>
+        <li><a href="/map" class="nav-link">Live Map</a></li>
+        <li><a href="/risk" class="nav-link">Flood Risk</a></li>
+        <li><a href="/prediction" class="nav-link">Prediction</a></li>
+        <li>
+          <a href="/alerts" class="nav-link">
+            Alerts
+            <span id="nav-alert-counter" class="nav-alert-badge">3</span>
+          </a>
+        </li>
+        <li><a href="/safe-locations" class="nav-link">Safe Locations</a></li>
+        <li><a href="/history" class="nav-link">Historical Data</a></li>
+        <li><a href="/admin" class="nav-link active" style="color: #93C5FD;">Admin</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+    <!-- Admin Stats Overview Cards (Section 20) -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 style="font-size: 2.2rem;">GIS Emergency Operations Center</h1>
+        <p>Live telemetry synchronization and master spatial record administration.</p>
+      </div>
+      <div>
+        <span class="badge badge-low" style="font-size: 0.82rem; padding: 0.4rem 0.8rem;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Admin Authenticated
+        </span>
+      </div>
+    </div>
+
+    <!-- 5 Summary KPI Cards -->
+    <div class="status-grid" style="margin-top: 0; margin-bottom: 2.5rem;">
+      <div class="kpi-card">
+        <div class="kpi-header"><span class="kpi-label">Monitored Areas</span></div>
+        <div id="adm-kpi-areas" class="kpi-val" style="color: #38BDF8;">5</div>
+        <div class="kpi-sub">Central Basin District</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header"><span class="kpi-label">High / Critical Zones</span></div>
+        <div id="adm-kpi-high" class="kpi-val" style="color: #EF4444;">2</div>
+        <div class="kpi-sub">Zones A & B</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header"><span class="kpi-label">Safe Shelters</span></div>
+        <div id="adm-kpi-shelters" class="kpi-val" style="color: #10B981;">5</div>
+        <div class="kpi-sub">Designated Relief Camps</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header"><span class="kpi-label">Active Hospitals</span></div>
+        <div id="adm-kpi-hospitals" class="kpi-val" style="color: #60A5FA;">4</div>
+        <div class="kpi-sub">Trauma & ICU Wings</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header"><span class="kpi-label">Active Warnings</span></div>
+        <div id="adm-kpi-alerts" class="kpi-val" style="color: #F87171;">3</div>
+        <div class="kpi-sub">Live Bulletins</div>
+      </div>
+    </div>
+
+    <!-- Admin Section Tabs -->
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem; overflow-x: auto;">
+      <button class="btn btn-sm btn-primary adm-tab-btn" data-tab="tab-flood-areas">1. Flood Areas</button>
+      <button class="btn btn-sm btn-secondary adm-tab-btn" data-tab="tab-rivers">2. River Telemetry</button>
+      <button class="btn btn-sm btn-secondary adm-tab-btn" data-tab="tab-alerts">3. Emergency Alerts</button>
+      <button class="btn btn-sm btn-secondary adm-tab-btn" data-tab="tab-shelters">4. Safe Locations</button>
+    </div>
+
+    <!-- TAB 1: Flood Area Management -->
+    <div id="tab-flood-areas" class="adm-tab-content">
+      <div style="display: grid; grid-template-columns: 1.1fr 1.9fr; gap: 2rem; align-items: start;">
+        <!-- Add / Edit Form -->
+        <div class="card">
+          <h3 class="card-title">Add / Update Flood Area</h3>
+          <form id="form-flood-area">
+            <input type="hidden" id="fa-id">
+            <div class="form-group">
+              <label class="form-label">Area Name</label>
+              <input type="text" id="fa-name" class="form-input" required placeholder="e.g. West Embankment (Zone F)">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Latitude</label>
+                <input type="number" id="fa-lat" class="form-input" step="0.0001" required value="10.052">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Longitude</label>
+                <input type="number" id="fa-lng" class="form-input" step="0.0001" required value="76.325">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Risk Level</label>
+              <select id="fa-risk" class="form-select">
+                <option value="Low">Low</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Rainfall (mm)</label>
+                <input type="number" id="fa-rain" class="form-input" value="65.0" step="0.5">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Water Level (m)</label>
+                <input type="number" id="fa-water" class="form-input" value="6.2" step="0.1">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description / Soil Observation</label>
+              <textarea id="fa-desc" class="form-textarea" rows="2" placeholder="Local drainage observation..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;">Save Flood Area</button>
+          </form>
+        </div>
+
+        <!-- Areas List Table -->
+        <div class="card">
+          <h3 class="card-title">Configured Flood Areas</h3>
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Area Name</th>
+                  <th>Risk</th>
+                  <th>Rainfall</th>
+                  <th>Water Level</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adm-flood-areas-tbody">
+                <!-- Injected by script -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: River Data Management -->
+    <div id="tab-rivers" class="adm-tab-content" style="display:none;">
+      <div class="card">
+        <h3 class="card-title">River Monitoring Stations & Warning Stages</h3>
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>River Name</th>
+                <th>Water Level (m)</th>
+                <th>Warning Level (m)</th>
+                <th>Danger Level (m)</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="adm-rivers-tbody">
+              <!-- Injected by script -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Emergency Alert Management -->
+    <div id="tab-alerts" class="adm-tab-content" style="display:none;">
+      <div style="display: grid; grid-template-columns: 1fr 1.8fr; gap: 2rem; align-items: start;">
+        <div class="card">
+          <h3 class="card-title">Broadcast Emergency Bulletin</h3>
+          <form id="form-create-alert">
+            <div class="form-group">
+              <label class="form-label">Alert Title</label>
+              <input type="text" id="alt-title" class="form-input" required placeholder="e.g. FLASH FLOOD WARNING">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Target Location</label>
+              <input type="text" id="alt-loc" class="form-input" required placeholder="e.g. Zone A & Confluence">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Risk Severity</label>
+              <select id="alt-risk" class="form-select">
+                <option value="CRITICAL">CRITICAL</option>
+                <option value="HIGH" selected>HIGH</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="LOW">LOW</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Alert Type</label>
+              <select id="alt-type" class="form-select">
+                <option value="Critical Flood Alert">Critical Flood Alert</option>
+                <option value="Heavy Rainfall Alert">Heavy Rainfall Alert</option>
+                <option value="Rising River Alert">Rising River Alert</option>
+                <option value="Flood Risk Alert">Flood Risk Alert</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Public Instructions & Advisory</label>
+              <textarea id="alt-desc" class="form-textarea" rows="3" required placeholder="Evacuate to elevated shelters immediately..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-danger" style="width:100%;">
+              Broadcast Alert
+            </button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Active & Archived Alerts</h3>
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Location</th>
+                  <th>Severity</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="adm-alerts-tbody">
+                <!-- Injected by script -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: Safe Locations Management -->
+    <div id="tab-shelters" class="adm-tab-content" style="display:none;">
+      <div class="card">
+        <h3 class="card-title">Emergency Shelters & Relief Camps</h3>
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Location Name</th>
+                <th>Type</th>
+                <th>Capacity</th>
+                <th>Contact</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="adm-shelters-tbody">
+              <!-- Injected by script -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-bottom">
+      <div>&copy; 2026 FloodGuard Project. Secure Administrator Console.</div>
+      <div>Designed with Leaflet.js, OpenStreetMap, Python Flask & Scikit-Learn.</div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="/js/api.js"></script>
+  <script src="/js/main.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      setupAdminTabs();
+      await loadAdminStats();
+      await loadAdminFloodAreas();
+      await loadAdminRivers();
+      await loadAdminAlerts();
+      await loadAdminShelters();
+      setupAdminForms();
+    });
+
+    function setupAdminTabs() {
+      const tabBtns = document.querySelectorAll(".adm-tab-btn");
+      const contents = document.querySelectorAll(".adm-tab-content");
+
+      tabBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          tabBtns.forEach(b => {
+            b.classList.remove("btn-primary");
+            b.classList.add("btn-secondary");
+          });
+          btn.classList.remove("btn-secondary");
+          btn.classList.add("btn-primary");
+
+          contents.forEach(c => c.style.display = "none");
+          const activeContent = document.getElementById(btn.dataset.tab);
+          if (activeContent) activeContent.style.display = "block";
+        });
+      });
+    }
+
+    async function loadAdminStats() {
+      try {
+        const s = await API.getStats();
+        document.getElementById("adm-kpi-areas").textContent = s.total_areas;
+        document.getElementById("adm-kpi-high").textContent = (s.high_risk + s.critical_risk);
+        document.getElementById("adm-kpi-shelters").textContent = s.open_shelters;
+        document.getElementById("adm-kpi-hospitals").textContent = s.hospitals_count;
+        document.getElementById("adm-kpi-alerts").textContent = s.active_alerts;
+      } catch (e) {
+        console.log("Stats err:", e);
+      }
+    }
+
+    async function loadAdminFloodAreas() {
+      try {
+        const areas = await API.getFloodAreas();
+        const tbody = document.getElementById("adm-flood-areas-tbody");
+        tbody.innerHTML = areas.map(a => `
+          <tr>
+            <td><strong>${a.area_name}</strong></td>
+            <td>${renderRiskBadge(a.risk_level)}</td>
+            <td class="mono">${a.rainfall} mm</td>
+            <td class="mono">${a.water_level} m</td>
+            <td>
+              <button class="btn btn-sm btn-danger" onclick="deleteArea(${a.id})">Delete</button>
+            </td>
+          </tr>
+        `).join("");
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function deleteArea(id) {
+      if (!confirm("Are you sure you want to delete this flood area?")) return;
+      try {
+        await API.deleteFloodArea(id);
+        showToast("Area deleted successfully", "success");
+        await loadAdminFloodAreas();
+        await loadAdminStats();
+      } catch (err) {
+        showToast("Delete failed", "error");
+      }
+    }
+
+    async function loadAdminRivers() {
+      try {
+        const rivers = await API.getRivers();
+        const tbody = document.getElementById("adm-rivers-tbody");
+        tbody.innerHTML = rivers.map(r => `
+          <tr>
+            <td><strong>${r.river_name}</strong></td>
+            <td>
+              <input type="number" id="riv-lvl-${r.id}" class="form-input" style="width:90px; display:inline-block;" value="${r.water_level}" step="0.1">
+            </td>
+            <td class="mono">${r.warning_level} m</td>
+            <td class="mono">${r.danger_level} m</td>
+            <td><span class="badge ${r.status === 'DANGER' ? 'badge-critical' : (r.status === 'WARNING' ? 'badge-medium' : 'badge-low')}">${r.status}</span></td>
+            <td>
+              <button class="btn btn-sm btn-primary" onclick="updateRiverLevel(${r.id})">Update</button>
+            </td>
+          </tr>
+        `).join("");
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function updateRiverLevel(id) {
+      const input = document.getElementById(`riv-lvl-${id}`);
+      const newLevel = parseFloat(input.value);
+      try {
+        await API.updateRiver(id, { water_level: newLevel });
+        showToast("River water level updated & alerts evaluated", "success");
+        await loadAdminRivers();
+        await loadAdminAlerts();
+        await loadAdminStats();
+      } catch (e) {
+        showToast("Failed to update river", "error");
+      }
+    }
+
+    async function loadAdminAlerts() {
+      try {
+        const alerts = await API.getAlerts();
+        const tbody = document.getElementById("adm-alerts-tbody");
+        tbody.innerHTML = alerts.map(a => `
+          <tr>
+            <td><strong>${a.title}</strong></td>
+            <td>${a.location}</td>
+            <td>${renderRiskBadge(a.risk_level)}</td>
+            <td><span class="mono" style="color: ${a.status === 'ACTIVE' ? '#EF4444' : '#10B981'};">● ${a.status}</span></td>
+            <td>
+              <button class="btn btn-sm btn-secondary" onclick="toggleAlertStatus(${a.id}, '${a.status === 'ACTIVE' ? 'RESOLVED' : 'ACTIVE'}')">
+                ${a.status === 'ACTIVE' ? 'Resolve' : 'Reactivate'}
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="deleteAlertItem(${a.id})">Delete</button>
+            </td>
+          </tr>
+        `).join("");
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function toggleAlertStatus(id, newStatus) {
+      try {
+        await API.updateAlert(id, { status: newStatus });
+        showToast(`Alert status changed to ${newStatus}`, "success");
+        await loadAdminAlerts();
+        await loadAdminStats();
+      } catch (e) {
+        showToast("Failed to update alert status", "error");
+      }
+    }
+
+    async function deleteAlertItem(id) {
+      if (!confirm("Delete this alert?")) return;
+      try {
+        await API.deleteAlert(id);
+        showToast("Alert removed", "success");
+        await loadAdminAlerts();
+        await loadAdminStats();
+      } catch (e) {
+        showToast("Failed to delete alert", "error");
+      }
+    }
+
+    async function loadAdminShelters() {
+      try {
+        const shelters = await API.getSafeLocations();
+        const tbody = document.getElementById("adm-shelters-tbody");
+        tbody.innerHTML = shelters.map(s => `
+          <tr>
+            <td><strong>${s.location_name}</strong></td>
+            <td><span class="badge badge-low">${s.type}</span></td>
+            <td class="mono">${s.capacity} People</td>
+            <td>${s.contact}</td>
+            <td><span class="mono" style="color:#10B981;">● ${s.status}</span></td>
+          </tr>
+        `).join("");
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function setupAdminForms() {
+      // Create Flood Area Form
+      document.getElementById("form-flood-area").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const payload = {
+          area_name: document.getElementById("fa-name").value,
+          latitude: parseFloat(document.getElementById("fa-lat").value),
+          longitude: parseFloat(document.getElementById("fa-lng").value),
+          risk_level: document.getElementById("fa-risk").value,
+          rainfall: parseFloat(document.getElementById("fa-rain").value),
+          water_level: parseFloat(document.getElementById("fa-water").value),
+          description: document.getElementById("fa-desc").value
+        };
+
+        try {
+          await API.createFloodArea(payload);
+          showToast("Flood area created successfully!", "success");
+          document.getElementById("form-flood-area").reset();
+          await loadAdminFloodAreas();
+          await loadAdminStats();
+        } catch (err) {
+          showToast("Error creating area: " + err.message, "error");
+        }
+      });
+
+      // Broadcast Alert Form
+      document.getElementById("form-create-alert").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const payload = {
+          title: document.getElementById("alt-title").value,
+          location: document.getElementById("alt-loc").value,
+          risk_level: document.getElementById("alt-risk").value,
+          alert_type: document.getElementById("alt-type").value,
+          description: document.getElementById("alt-desc").value,
+          status: "ACTIVE"
+        };
+
+        try {
+          await API.createAlert(payload);
+          showToast("Emergency warning broadcast successfully!", "success");
+          playEmergencyChime();
+          document.getElementById("form-create-alert").reset();
+          await loadAdminAlerts();
+          await loadAdminStats();
+        } catch (err) {
+          showToast("Error broadcasting alert: " + err.message, "error");
+        }
+      });
+    }
+  </script>
+</body>
+</html>

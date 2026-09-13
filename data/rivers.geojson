@@ -1,0 +1,86 @@
+{
+  "type": "FeatureCollection",
+  "name": "FloodGuard_Rivers",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 1,
+      "properties": {
+        "id": 1,
+        "river_name": "Periyar Main Stem River",
+        "district": "Central Basin District",
+        "water_level": 9.8,
+        "warning_level": 7.5,
+        "danger_level": 9.0,
+        "status": "DANGER",
+        "flow_rate_cumecs": 1420,
+        "length_km": 24.5,
+        "last_monitored": "2026-09-13 10:45:00"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [76.275, 10.115],
+          [76.302, 10.095],
+          [76.325, 10.088],
+          [76.348, 10.072],
+          [76.372, 10.065],
+          [76.395, 10.048],
+          [76.415, 10.035]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2,
+      "properties": {
+        "id": 2,
+        "river_name": "Chalakudy North Tributary",
+        "district": "Central Basin District",
+        "water_level": 7.8,
+        "warning_level": 7.0,
+        "danger_level": 8.5,
+        "status": "WARNING",
+        "flow_rate_cumecs": 890,
+        "length_km": 18.2,
+        "last_monitored": "2026-09-13 10:40:00"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [76.290, 10.130],
+          [76.315, 10.112],
+          [76.340, 10.100],
+          [76.370, 10.085],
+          [76.390, 10.075]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3,
+      "properties": {
+        "id": 3,
+        "river_name": "South Drainage Spillway Canal",
+        "district": "Central Basin District",
+        "water_level": 4.1,
+        "warning_level": 5.5,
+        "danger_level": 6.8,
+        "status": "NORMAL",
+        "flow_rate_cumecs": 320,
+        "length_km": 14.0,
+        "last_monitored": "2026-09-13 10:15:00"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [76.330, 10.040],
+          [76.335, 10.022],
+          [76.342, 10.005],
+          [76.355, 9.988],
+          [76.368, 9.972]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,157 @@
+{
+  "type": "FeatureCollection",
+  "name": "FloodGuard_Flood_Areas",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 1,
+      "properties": {
+        "id": 1,
+        "name": "North Riverdale Lowlands (Zone A)",
+        "district": "Central Basin District",
+        "risk_level": "High",
+        "rainfall": 135.5,
+        "water_level": 8.7,
+        "elevation": 4.2,
+        "distance_to_river": 120,
+        "historical_frequency": "High (3 floods in 5 years)",
+        "last_updated": "2026-09-13 10:30:00",
+        "description": "Low-lying floodplain adjacent to the North River confluence. Highly prone to flash inundation during heavy monsoonal spells."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.312, 10.082],
+            [76.328, 10.095],
+            [76.345, 10.090],
+            [76.350, 10.075],
+            [76.335, 10.068],
+            [76.318, 10.071],
+            [76.312, 10.082]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2,
+      "properties": {
+        "id": 2,
+        "name": "East Delta Agricultural Sector (Zone B)",
+        "district": "Central Basin District",
+        "risk_level": "Critical",
+        "rainfall": 178.0,
+        "water_level": 9.8,
+        "elevation": 2.5,
+        "distance_to_river": 60,
+        "historical_frequency": "Severe (Annual overflow)",
+        "last_updated": "2026-09-13 10:45:00",
+        "description": "Flat wetland and delta canal belt. River overflow has breached secondary embankment levee."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.360, 10.065],
+            [76.385, 10.078],
+            [76.402, 10.060],
+            [76.390, 10.042],
+            [76.368, 10.048],
+            [76.360, 10.065]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3,
+      "properties": {
+        "id": 3,
+        "name": "Central Metro Riverside Ward (Zone C)",
+        "district": "Central Basin District",
+        "risk_level": "Medium",
+        "rainfall": 65.0,
+        "water_level": 6.2,
+        "elevation": 8.5,
+        "distance_to_river": 340,
+        "historical_frequency": "Moderate (1 flood in 5 years)",
+        "last_updated": "2026-09-13 09:15:00",
+        "description": "Urban mixed-use district with engineered drainage. Waterlogging observed on low-tier underpasses."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.320, 10.035],
+            [76.342, 10.045],
+            [76.358, 10.030],
+            [76.340, 10.015],
+            [76.315, 10.022],
+            [76.320, 10.035]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4,
+      "properties": {
+        "id": 4,
+        "name": "West Canal Marshland (Zone D)",
+        "district": "Central Basin District",
+        "risk_level": "Medium",
+        "rainfall": 58.0,
+        "water_level": 5.9,
+        "elevation": 6.0,
+        "distance_to_river": 410,
+        "historical_frequency": "Occasional waterlogging",
+        "last_updated": "2026-09-13 08:30:00",
+        "description": "Natural retention basin absorbing canal excess. Currently at 70% retention buffer capacity."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.280, 10.055],
+            [76.305, 10.065],
+            [76.310, 10.045],
+            [76.295, 10.035],
+            [76.278, 10.042],
+            [76.280, 10.055]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 5,
+      "properties": {
+        "id": 5,
+        "name": "South Highland Foothills (Zone E)",
+        "district": "Central Basin District",
+        "risk_level": "Low",
+        "rainfall": 28.0,
+        "water_level": 3.4,
+        "elevation": 28.0,
+        "distance_to_river": 1800,
+        "historical_frequency": "Rare / Nil",
+        "last_updated": "2026-09-13 07:00:00",
+        "description": "Elevated terrace sector with rapid natural storm runoff towards catchment basins."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.330, 9.995],
+            [76.365, 10.005],
+            [76.380, 9.980],
+            [76.340, 9.970],
+            [76.318, 9.982],
+            [76.330, 9.995]
+          ]
+        ]
+      }
+    }
+  ]
+}

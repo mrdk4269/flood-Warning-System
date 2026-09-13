@@ -1,0 +1,98 @@
+{
+  "type": "FeatureCollection",
+  "name": "FloodGuard_Hospitals",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 1,
+      "properties": {
+        "id": 1,
+        "hospital_name": "District General Trauma Care Hospital",
+        "district": "Central Basin District",
+        "address": "100 Health City Boulevard, Safe Zone",
+        "emergency_availability": "24/7 ICU & Trauma",
+        "total_beds": 420,
+        "available_beds": 84,
+        "contact": "+91 484 290 8000",
+        "ambulance_helpline": "108 / +91 484 290 8108",
+        "latitude": 9.995,
+        "longitude": 76.352,
+        "status": "OPERATIONAL",
+        "flood_status": "Secure - Elevated 26m"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.352, 9.995]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2,
+      "properties": {
+        "id": 2,
+        "hospital_name": "Metro Apex Multi-Specialty Hospital",
+        "district": "Central Basin District",
+        "address": "40 Civil Link Road, Central Ward",
+        "emergency_availability": "24/7 Emergency Wing",
+        "total_beds": 350,
+        "available_beds": 45,
+        "contact": "+91 484 290 5555",
+        "ambulance_helpline": "+91 484 290 5500",
+        "latitude": 10.025,
+        "longitude": 76.335,
+        "status": "OPERATIONAL",
+        "flood_status": "Operational - Ground Floor Flood Barriers Active"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.335, 10.025]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3,
+      "properties": {
+        "id": 3,
+        "hospital_name": "St. Luke's Community Red Cross Hospital",
+        "district": "Central Basin District",
+        "address": "88 South Highland Crest",
+        "emergency_availability": "General Emergency & First Response",
+        "total_beds": 160,
+        "available_beds": 38,
+        "contact": "+91 484 290 1212",
+        "ambulance_helpline": "+91 484 290 1200",
+        "latitude": 9.985,
+        "longitude": 76.325,
+        "status": "OPERATIONAL",
+        "flood_status": "Secure - High Altitude"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.325, 9.985]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4,
+      "properties": {
+        "id": 4,
+        "hospital_name": "North Riverside Primary Health Centre",
+        "district": "Central Basin District",
+        "address": "River View Road, North Sector",
+        "emergency_availability": "Day Clinic & Stabilisation Only",
+        "total_beds": 40,
+        "available_beds": 0,
+        "contact": "+91 484 290 3300",
+        "ambulance_helpline": "+91 484 290 3301",
+        "latitude": 10.068,
+        "longitude": 76.328,
+        "status": "EVACUATING",
+        "flood_status": "Advisory - Adjacent to High Risk Inundation Zone"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.328, 10.068]
+      }
+    }
+  ]
+}

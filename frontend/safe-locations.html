@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Safe Locations & Evacuation Routing | FloodGuard</title>
+  <meta name="description" content="Find nearby emergency shelters, schools, high-ground relief centers, and calculate evacuation routes.">
+
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+</head>
+<body>
+
+  <!-- Prototype Notice -->
+  <div class="disclaimer-banner">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span><strong>Prototype Notice:</strong> Routes and shelter capacities are for educational demonstration. In a flood crisis, obey on-ground police and rescue service barricades.</span>
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="/" class="nav-brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+        </div>
+        <div>
+          <div class="brand-title">FloodGuard</div>
+          <div class="brand-subtitle">GIS Early Warning</div>
+        </div>
+      </a>
+
+      <button class="mobile-toggle" aria-label="Toggle navigation">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+
+      <ul class="nav-links">
+        <li><a href="/" class="nav-link">Home</a></li>
+        <li><a href="/map" class="nav-link">Live Map</a></li>
+        <li><a href="/risk" class="nav-link">Flood Risk</a></li>
+        <li><a href="/prediction" class="nav-link">Prediction</a></li>
+        <li>
+          <a href="/alerts" class="nav-link">
+            Alerts
+            <span id="nav-alert-counter" class="nav-alert-badge">3</span>
+          </a>
+        </li>
+        <li><a href="/safe-locations" class="nav-link active">Safe Locations</a></li>
+        <li><a href="/history" class="nav-link">Historical Data</a></li>
+        <li><a href="/admin" class="nav-link" style="color: #93C5FD;">Admin</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+    <!-- Page Header & GPS Proximity Trigger -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+      <div>
+        <div style="display: inline-flex; align-items: center; gap: 0.4rem; color: #10B981; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Emergency Relief & Evacuation Corridor
+        </div>
+        <h1 style="font-size: 2.4rem;">Safe Locations & Evacuation Routes</h1>
+        <p style="font-size: 1.05rem; max-width: 720px;">
+          Locate nearest designated shelters, community relief centers, and hospital trauma wings. Calculate safe evacuation routes with real-time distance and estimated transit time.
+        </p>
+      </div>
+
+      <!-- Find Nearest Button -->
+      <div>
+        <button id="btn-find-nearest" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+          Find Nearest Safe Shelter (GPS)
+        </button>
+      </div>
+    </div>
+
+    <!-- Nearest Safe Location Spotlight (Section 17) -->
+    <div id="nearest-spotlight-card" class="card" style="border: 2px solid #10B981; background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(17, 24, 39, 0.95) 100%);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <span class="badge badge-low" style="margin-bottom: 0.4rem;">Nearest Safe Location Recommendation</span>
+          <h2 id="nearest-name" style="font-size: 1.5rem; margin-top: 0.2rem;">Riverdale Community Center & Relief Camp</h2>
+          <p id="nearest-address" style="font-size: 0.9rem; color: #CBD5E1;">45 Highland Ring Road, South Sector</p>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 1.5rem;">
+          <div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Distance</div>
+            <div id="nearest-dist" class="mono" style="font-size: 1.8rem; font-weight: 800; color: #10B981;">1.2 KM</div>
+          </div>
+
+          <div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Capacity</div>
+            <div id="nearest-cap" class="mono" style="font-size: 1.8rem; font-weight: 800; color: #FFFFFF;">850 People</div>
+          </div>
+
+          <button id="btn-route-to-nearest" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            View Evacuation Route
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layout Grid: Map and Evacuation Route Calculator -->
+    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2rem; margin-bottom: 3rem; align-items: start;">
+      <!-- Interactive Route Map -->
+      <div class="card" style="padding: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding: 0.5rem;">
+          <h3 style="font-size: 1.15rem;">Evacuation Route Visualizer</h3>
+          <span id="route-distance-badge" class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93C5FD;">Distance: 1.2 km</span>
+        </div>
+        <div id="route-map" style="height: 440px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-subtle);"></div>
+      </div>
+
+      <!-- Route Planner Form & Safe Points Directory -->
+      <div>
+        <div class="card">
+          <h3 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+            Plan Evacuation Route
+          </h3>
+
+          <div class="form-group">
+            <label class="form-label">Starting Point (Current Location)</label>
+            <select id="route-origin" class="form-select">
+              <option value="10.05,76.32">North Riverdale Lowlands (Zone A)</option>
+              <option value="10.06,76.38">East Delta Agricultural Sector (Zone B)</option>
+              <option value="10.03,76.33">Central Metro Riverside Ward (Zone C)</option>
+              <option value="10.04,76.34" selected>District Central Hub (Simulated GPS)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Destination (Shelter or Hospital)</label>
+            <select id="route-dest" class="form-select">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <div style="background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.4rem;">
+              <span style="color: var(--text-muted);">Estimated Walking Time:</span>
+              <strong id="time-walk" class="mono" style="color: #60A5FA;">~ 16 Mins</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+              <span style="color: var(--text-muted);">Estimated Driving Time:</span>
+              <strong id="time-drive" class="mono" style="color: #10B981;">~ 4 Mins</strong>
+            </div>
+          </div>
+
+          <button id="btn-draw-route" class="btn btn-secondary" style="width: 100%;">
+            Recalculate Evacuation Path
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Safe Locations & Hospitals Data Table -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h3 class="card-title" style="margin-bottom:0;">Designated Emergency Shelters & Medical Hubs</h3>
+        <div style="display:flex; gap: 0.5rem;">
+          <button class="btn btn-sm btn-secondary filter-loc-btn active" data-type="ALL">All Centers</button>
+          <button class="btn btn-sm btn-secondary filter-loc-btn" data-type="SHELTER">Shelters Only</button>
+          <button class="btn btn-sm btn-secondary filter-loc-btn" data-type="HOSPITAL">Hospitals Only</button>
+        </div>
+      </div>
+
+      <div class="data-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Capacity / Beds</th>
+              <th>Status</th>
+              <th>Contact Phone</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="safe-locations-table-body">
+            <!-- Injected by script -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-bottom">
+      <div>&copy; 2026 FloodGuard Project. Evacuation & Shelter Coordination Engine.</div>
+      <div>Designed with Leaflet.js, OpenStreetMap, Python Flask & Scikit-Learn.</div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/main.js"></script>
+
+  <script>
+    let routeMap = null;
+    let routeLine = null;
+    let originMarker = null;
+    let destMarker = null;
+    let allLocations = [];
+    let userCoords = [10.04, 76.34]; // Default user coords
+
+    // Haversine Distance in Kilometers
+    function calcDistanceKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return roundTo(R * c, 1);
+    }
+
+    function roundTo(n, digits) {
+      return Number(n.toFixed(digits));
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      initRouteMap();
+      await loadLocationsData();
+      setupRouteControls();
+    });
+
+    function initRouteMap() {
+      routeMap = L.map("route-map", {
+        center: [10.02, 76.34],
+        zoom: 12
+      });
+
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        maxZoom: 19
+      }).addTo(routeMap);
+    }
+
+    async function loadLocationsData() {
+      try {
+        const shelters = await API.getSafeLocations();
+        const hospitals = await API.getHospitals();
+
+        const formattedShelters = shelters.map(s => ({
+          name: s.location_name,
+          type: s.type,
+          is_hospital: false,
+          capacity: `${s.capacity} People`,
+          contact: s.contact,
+          status: s.status,
+          lat: s.latitude,
+          lng: s.longitude
+        }));
+
+        const formattedHospitals = hospitals.map(h => ({
+          name: h.hospital_name,
+          type: "Hospital",
+          is_hospital: true,
+          capacity: `${h.available_beds} Beds Avail`,
+          contact: h.contact,
+          status: h.status,
+          lat: h.latitude,
+          lng: h.longitude
+        }));
+
+        allLocations = [...formattedShelters, ...formattedHospitals];
+
+        // Populate Destination Dropdown
+        const destSelect = document.getElementById("route-dest");
+        destSelect.innerHTML = "";
+        allLocations.forEach((loc, idx) => {
+          const opt = document.createElement("option");
+          opt.value = `${loc.lat},${loc.lng}`;
+          opt.textContent = `${loc.name} (${loc.type})`;
+          if (idx === 0) opt.selected = true;
+          destSelect.appendChild(opt);
+        });
+
+        renderTable("ALL");
+        updateNearestSpotlight();
+        drawCurrentRoute();
+      } catch (err) {
+        console.error("Failed to load locations:", err);
+      }
+    }
+
+    function renderTable(filterType) {
+      const tbody = document.getElementById("safe-locations-table-body");
+      if (!tbody) return;
+
+      let filtered = allLocations;
+      if (filterType === "SHELTER") filtered = allLocations.filter(l => !l.is_hospital);
+      if (filterType === "HOSPITAL") filtered = allLocations.filter(l => l.is_hospital);
+
+      tbody.innerHTML = filtered.map(l => {
+        const dist = calcDistanceKm(userCoords[0], userCoords[1], l.lat, l.lng);
+        return `
+          <tr>
+            <td><strong>${l.name}</strong></td>
+            <td><span class="badge ${l.is_hospital ? 'badge-medium' : 'badge-low'}">${l.type}</span></td>
+            <td class="mono">${l.capacity}</td>
+            <td><span class="mono" style="color: #10B981; font-weight: 700;">● ${l.status}</span></td>
+            <td class="mono">${l.contact || "N/A"}</td>
+            <td>
+              <button class="btn btn-sm btn-primary" onclick="setRouteDestination(${l.lat}, ${l.lng}, '${l.name}')">
+                Route Here (${dist} km)
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function updateNearestSpotlight() {
+      let nearest = null;
+      let minDistance = 999999;
+
+      allLocations.forEach(loc => {
+        const dist = calcDistanceKm(userCoords[0], userCoords[1], loc.lat, loc.lng);
+        if (dist < minDistance) {
+          minDistance = dist;
+          nearest = loc;
+        }
+      });
+
+      if (nearest) {
+        document.getElementById("nearest-name").textContent = nearest.name;
+        document.getElementById("nearest-dist").textContent = `${minDistance} KM`;
+        document.getElementById("nearest-cap").textContent = nearest.capacity;
+
+        document.getElementById("btn-route-to-nearest").onclick = () => {
+          setRouteDestination(nearest.lat, nearest.lng, nearest.name);
+          document.getElementById("route-map").scrollIntoView({ behavior: "smooth" });
+        };
+      }
+    }
+
+    function setRouteDestination(lat, lng, name) {
+      const destSelect = document.getElementById("route-dest");
+      const targetVal = `${lat},${lng}`;
+      for (let i = 0; i < destSelect.options.length; i++) {
+        if (destSelect.options[i].value === targetVal) {
+          destSelect.selectedIndex = i;
+          break;
+        }
+      }
+      drawCurrentRoute();
+    }
+
+    function drawCurrentRoute() {
+      const originParts = document.getElementById("route-origin").value.split(",").map(Number);
+      const destParts = document.getElementById("route-dest").value.split(",").map(Number);
+
+      const oLat = originParts[0], oLng = originParts[1];
+      const dLat = destParts[0], dLng = destParts[1];
+
+      // Calculate distance
+      const distKm = calcDistanceKm(oLat, oLng, dLat, dLng);
+      document.getElementById("route-distance-badge").textContent = `Distance: ${distKm} KM`;
+
+      // Estimated Times (Walking ~ 4.5 km/h, Driving ~ 25 km/h in wet conditions)
+      const walkMins = Math.max(2, Math.round((distKm / 4.5) * 60));
+      const driveMins = Math.max(1, Math.round((distKm / 25.0) * 60));
+
+      document.getElementById("time-walk").textContent = `~ ${walkMins} Mins`;
+      document.getElementById("time-drive").textContent = `~ ${driveMins} Mins`;
+
+      // Clear previous layers
+      if (routeLine) routeMap.removeLayer(routeLine);
+      if (originMarker) routeMap.removeLayer(originMarker);
+      if (destMarker) routeMap.removeLayer(destMarker);
+
+      // Create Route Polyline with realistic intermediate waypoint
+      const midLat = (oLat + dLat) / 2 + 0.003;
+      const midLng = (oLng + dLng) / 2 - 0.002;
+      const routePoints = [[oLat, oLng], [midLat, midLng], [dLat, dLng]];
+
+      routeLine = L.polyline(routePoints, {
+        color: "#3B82F6",
+        weight: 5,
+        opacity: 0.85,
+        dashArray: "8, 8"
+      }).addTo(routeMap);
+
+      originMarker = L.circleMarker([oLat, oLng], {
+        radius: 8,
+        fillColor: "#3B82F6",
+        color: "#FFFFFF",
+        weight: 2,
+        fillOpacity: 1
+      }).bindPopup("<b>Evacuation Origin Point</b>").addTo(routeMap);
+
+      destMarker = L.circleMarker([dLat, dLng], {
+        radius: 9,
+        fillColor: "#10B981",
+        color: "#FFFFFF",
+        weight: 2,
+        fillOpacity: 1
+      }).bindPopup("<b>Safe Destination Relief Point</b>").addTo(routeMap);
+
+      routeMap.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+    }
+
+    function setupRouteControls() {
+      document.getElementById("btn-draw-route").addEventListener("click", drawCurrentRoute);
+      document.getElementById("route-origin").addEventListener("change", drawCurrentRoute);
+      document.getElementById("route-dest").addEventListener("change", drawCurrentRoute);
+
+      // GPS Nearest Search
+      document.getElementById("btn-find-nearest").addEventListener("click", () => {
+        showToast("Locating nearest refuge center...", "info");
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            userCoords = [pos.coords.latitude, pos.coords.longitude];
+            updateNearestSpotlight();
+            renderTable("ALL");
+            showToast("Calculated nearest shelters to your GPS position!", "success");
+          },
+          () => {
+            // Default simulated user location
+            userCoords = [10.05, 76.32];
+            updateNearestSpotlight();
+            renderTable("ALL");
+            showToast("GPS Simulated to North Riverdale.", "info");
+          }
+        );
+      });
+
+      // Table filter buttons
+      document.querySelectorAll(".filter-loc-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".filter-loc-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          renderTable(btn.dataset.type);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

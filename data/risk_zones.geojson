@@ -1,0 +1,112 @@
+{
+  "type": "FeatureCollection",
+  "name": "FloodGuard_Risk_Zones",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "RZ-CRIT-01",
+      "properties": {
+        "zone_code": "RZ-CRIT-01",
+        "zone_name": "Active Breach Zone - East Delta",
+        "risk_level": "Critical",
+        "score_range": "81-100",
+        "color": "#DC2626",
+        "fill_color": "rgba(220, 38, 38, 0.45)",
+        "action_advisory": "Immediate evacuation recommended. Water levels rising rapidly."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.355, 10.070],
+            [76.390, 10.082],
+            [76.410, 10.058],
+            [76.395, 10.038],
+            [76.365, 10.042],
+            [76.355, 10.070]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "RZ-HIGH-02",
+      "properties": {
+        "zone_code": "RZ-HIGH-02",
+        "zone_name": "Periyar Confluence Floodplain",
+        "risk_level": "High",
+        "score_range": "61-80",
+        "color": "#EF4444",
+        "fill_color": "rgba(239, 68, 68, 0.35)",
+        "action_advisory": "Prepare emergency go-bags. Relocate elderly and livestock to upper shelters."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.308, 10.085],
+            [76.332, 10.100],
+            [76.355, 10.092],
+            [76.355, 10.070],
+            [76.330, 10.065],
+            [76.312, 10.070],
+            [76.308, 10.085]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "RZ-MED-03",
+      "properties": {
+        "zone_code": "RZ-MED-03",
+        "zone_name": "Urban Metro Intermediate Buffer",
+        "risk_level": "Medium",
+        "score_range": "31-60",
+        "color": "#F59E0B",
+        "fill_color": "rgba(245, 158, 11, 0.30)",
+        "action_advisory": "Stay alert to local updates. Avoid low underpasses and underground basements."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.280, 10.060],
+            [76.320, 10.065],
+            [76.345, 10.040],
+            [76.340, 10.010],
+            [76.305, 10.020],
+            [76.275, 10.040],
+            [76.280, 10.060]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "RZ-LOW-04",
+      "properties": {
+        "zone_code": "RZ-LOW-04",
+        "zone_name": "Highland Safe Plateau",
+        "risk_level": "Low",
+        "score_range": "0-30",
+        "color": "#10B981",
+        "fill_color": "rgba(16, 185, 129, 0.25)",
+        "action_advisory": "Safe zone. DESIGNATED PRIMARY REFUGE & DISPATCH HUB."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.325, 10.000],
+            [76.375, 10.015],
+            [76.395, 9.980],
+            [76.345, 9.965],
+            [76.310, 9.975],
+            [76.325, 10.000]
+          ]
+        ]
+      }
+    }
+  ]
+}

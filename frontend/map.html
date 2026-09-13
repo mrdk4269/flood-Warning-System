@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live GIS Flood Map | FloodGuard Early Warning System</title>
+  <meta name="description" content="Interactive GIS Map showing real-time flood-prone areas, risk zones, river gauge levels, evacuation shelters, and hospitals.">
+
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+</head>
+<body style="overflow: hidden; height: 100vh;">
+
+  <!-- Educational Prototype Notice -->
+  <div class="disclaimer-banner">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span><strong>Prototype Notice:</strong> GIS visualization is for educational and decision-support purposes. Not an official emergency warning.</span>
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="/" class="nav-brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+        </div>
+        <div>
+          <div class="brand-title">FloodGuard</div>
+          <div class="brand-subtitle">GIS Early Warning</div>
+        </div>
+      </a>
+
+      <button class="mobile-toggle" aria-label="Toggle navigation">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+
+      <ul class="nav-links">
+        <li><a href="/" class="nav-link">Home</a></li>
+        <li><a href="/map" class="nav-link active">Live Map</a></li>
+        <li><a href="/risk" class="nav-link">Flood Risk</a></li>
+        <li><a href="/prediction" class="nav-link">Prediction</a></li>
+        <li>
+          <a href="/alerts" class="nav-link">
+            Alerts
+            <span id="nav-alert-counter" class="nav-alert-badge">3</span>
+          </a>
+        </li>
+        <li><a href="/safe-locations" class="nav-link">Safe Locations</a></li>
+        <li><a href="/history" class="nav-link">Historical Data</a></li>
+        <li><a href="/admin" class="nav-link" style="color: #93C5FD;">Admin</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Full-Screen Interactive Map Wrapper -->
+  <div class="map-page-wrapper">
+    <div id="map-container"></div>
+
+    <!-- Floating HUD Panel (Layer Controls & Location Search) -->
+    <div class="map-hud-panel">
+      <div class="map-hud-title">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          <span>GIS Layer Controls</span>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="locateUser()" title="Find My Location" style="padding: 0.2rem 0.5rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+          GPS
+        </button>
+      </div>
+
+      <!-- Location Search -->
+      <div class="map-search-bar">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="map-search-input" type="text" class="map-search-input" placeholder="Search zone, river, or shelter... (Enter)">
+      </div>
+
+      <!-- 6 GIS Layer Toggles -->
+      <div class="layer-toggle-group">
+        <!-- Layer 1 -->
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #EF4444;"></span>Layer 1: Flood Areas</span>
+          <input type="checkbox" id="toggle-flood-areas" checked>
+        </label>
+
+        <!-- Layer 2 -->
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #F59E0B;"></span>Layer 2: Risk Zones</span>
+          <input type="checkbox" id="toggle-risk-zones" checked>
+        </label>
+
+        <!-- Layer 3 -->
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #06B6D4;"></span>Layer 3: Monitored Rivers</span>
+          <input type="checkbox" id="toggle-rivers" checked>
+        </label>
+
+        <!-- Layer 4 -->
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #10B981;"></span>Layer 4: Safe Shelters</span>
+          <input type="checkbox" id="toggle-shelters" checked>
+        </label>
+
+        <!-- Layer 5 -->
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #DC2626;"></span>Layer 5: Hospitals</span>
+          <input type="checkbox" id="toggle-hospitals" checked>
+        </label>
+
+        <!-- Layer 6 -->
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #3B82F6;"></span>Layer 6: Rainfall Stations</span>
+          <input type="checkbox" id="toggle-rainfall" checked>
+        </label>
+      </div>
+    </div>
+
+    <!-- Floating Bottom Telemetry Bar -->
+    <div class="map-telemetry-hud">
+      <div class="telemetry-item">
+        <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Periyar Stage:</span>
+        <span class="telemetry-value" style="color: #EF4444;">9.8m (DANGER)</span>
+      </div>
+
+      <div class="telemetry-item">
+        <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Peak Downpour:</span>
+        <span class="telemetry-value" style="color: #60A5FA;">178.0 mm / 24h</span>
+      </div>
+
+      <div class="telemetry-item">
+        <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Open Shelters:</span>
+        <span class="telemetry-value" style="color: #10B981;">5 Active Centers</span>
+      </div>
+
+      <div class="telemetry-item">
+        <a href="/alerts" class="btn btn-sm btn-danger" style="padding: 0.3rem 0.75rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+          3 Active Alerts
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/map.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      initFloodMap("map-container");
+
+      // Check if URL specifies location focus
+      const urlParams = new URLSearchParams(window.location.search);
+      const focusParam = urlParams.get("focus");
+      if (focusParam) {
+        setTimeout(() => {
+          const searchInput = document.getElementById("map-search-input");
+          if (searchInput) {
+            searchInput.value = focusParam;
+            const event = new KeyboardEvent('keypress', {'key':'Enter'});
+            searchInput.dispatchEvent(event);
+          }
+        }, 800);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+{
+  "type": "FeatureCollection",
+  "name": "FloodGuard_Rainfall_Stations",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 1,
+      "properties": {
+        "station_id": "RS-NORTH-01",
+        "station_name": "Aluva North Catchment Automated Gauge",
+        "district": "Central Basin District",
+        "rainfall_mm": 142.5,
+        "intensity": "Extremely Heavy Rainfall",
+        "last_reading_time": "2026-09-13 10:45:00",
+        "cumulative_24h_mm": 210.0,
+        "status": "ACTIVE",
+        "latitude": 10.088,
+        "longitude": 76.345
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.345, 10.088]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2,
+      "properties": {
+        "station_id": "RS-EAST-02",
+        "station_name": "Perumbavoor Delta Rain Station",
+        "district": "Central Basin District",
+        "rainfall_mm": 178.0,
+        "intensity": "Torrential Downpour",
+        "last_reading_time": "2026-09-13 10:45:00",
+        "cumulative_24h_mm": 265.4,
+        "status": "ALERT",
+        "latitude": 10.065,
+        "longitude": 76.388
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.388, 10.065]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3,
+      "properties": {
+        "station_id": "RS-CENTRAL-03",
+        "station_name": "Metro Observatory Rain Gauge",
+        "district": "Central Basin District",
+        "rainfall_mm": 65.2,
+        "intensity": "Moderate to Heavy Rain",
+        "last_reading_time": "2026-09-13 10:40:00",
+        "cumulative_24h_mm": 95.0,
+        "status": "ACTIVE",
+        "latitude": 10.030,
+        "longitude": 76.335
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.335, 10.030]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4,
+      "properties": {
+        "station_id": "RS-SOUTH-04",
+        "station_name": "Highland Hilltop Weather Station",
+        "district": "Central Basin District",
+        "rainfall_mm": 28.0,
+        "intensity": "Light to Moderate Showers",
+        "last_reading_time": "2026-09-13 10:30:00",
+        "cumulative_24h_mm": 42.1,
+        "status": "ACTIVE",
+        "latitude": 9.982,
+        "longitude": 76.350
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [76.350, 9.982]
+      }
+    }
+  ]
+}
