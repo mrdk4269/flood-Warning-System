@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live GIS Flood Map | FloodGuard Early Warning System</title>
+  <title>Tactical GIS Flood Map | FloodGuard Operations Center</title>
   <meta name="description" content="Interactive GIS Map showing real-time flood-prone areas, risk zones, river gauge levels, evacuation shelters, and hospitals.">
 
   <!-- CSS Stylesheets -->
@@ -15,10 +15,21 @@
 </head>
 <body style="overflow: hidden; height: 100vh;">
 
-  <!-- Educational Prototype Notice -->
-  <div class="disclaimer-banner">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <span><strong>Prototype Notice:</strong> GIS visualization is for educational and decision-support purposes. Not an official emergency warning.</span>
+  <!-- Top Telemetry Status Ribbon -->
+  <div class="telemetry-ticker-bar">
+    <div class="ticker-left">
+      <div class="ticker-item">
+        <span class="pulse-beacon"></span>
+        <span>GIS WORKBENCH ONLINE</span>
+      </div>
+      <div class="ticker-item mono" style="color: var(--accent-blue);">
+        <span id="hud-cursor-coords">LAT: 10.0400° N | LON: 76.3400° E | ELEV: ~8.2m</span>
+      </div>
+    </div>
+    <div class="ticker-marquee" id="incident-ticker-text">
+      <span class="ticker-tag">HAZARD</span>
+      <strong>PERIYAR MAIN STEM: 9.8m (DANGER STAGE BREACHED)</strong> — EAST DELTA LEVEE OVERFLOW
+    </div>
   </div>
 
   <!-- Navigation Bar -->
@@ -60,86 +71,89 @@
   <div class="map-page-wrapper">
     <div id="map-container"></div>
 
-    <!-- Floating HUD Panel (Layer Controls & Location Search) -->
-    <div class="map-hud-panel">
+    <!-- Floating HUD Panel (Layer Controls, Basemap & Search) -->
+    <div class="map-hud-panel tactical-box">
       <div class="map-hud-title">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-          <span>GIS Layer Controls</span>
+          <span>SPATIAL LAYERS & HUD</span>
         </div>
-        <button class="btn btn-sm btn-secondary" onclick="locateUser()" title="Find My Location" style="padding: 0.2rem 0.5rem;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-          GPS
+        <button class="btn btn-sm btn-secondary" onclick="locateUser()" title="Acquire GPS Position" style="padding: 0.2rem 0.6rem; font-family: var(--font-mono);">
+          GPS LOCK
         </button>
+      </div>
+
+      <!-- Basemap Switcher Dropdown -->
+      <div style="margin-bottom: 0.75rem;">
+        <label style="font-size: 0.7rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase;">Basemap Provider</label>
+        <select id="basemap-select" class="form-select" style="padding: 0.35rem 0.6rem; font-size: 0.8rem; font-family: var(--font-mono); margin-top: 0.2rem;">
+          <option value="dark" selected>Tactical Night Voyager (Dark)</option>
+          <option value="satellite">Esri World Imagery (Satellite)</option>
+          <option value="streets">OpenStreetMap Standard</option>
+        </select>
       </div>
 
       <!-- Location Search -->
       <div class="map-search-bar">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="map-search-input" type="text" class="map-search-input" placeholder="Search zone, river, or shelter... (Enter)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="map-search-input" type="text" class="map-search-input" placeholder="Search zone, river, or shelter...">
       </div>
 
       <!-- 6 GIS Layer Toggles -->
       <div class="layer-toggle-group">
-        <!-- Layer 1 -->
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #EF4444;"></span>Layer 1: Flood Areas</span>
+          <span><span class="layer-indicator" style="background: #EF4444;"></span>Layer 1: Flood Inundation Polygons</span>
           <input type="checkbox" id="toggle-flood-areas" checked>
         </label>
 
-        <!-- Layer 2 -->
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #F59E0B;"></span>Layer 2: Risk Zones</span>
+          <span><span class="layer-indicator" style="background: #F59E0B;"></span>Layer 2: Risk Perimeters</span>
           <input type="checkbox" id="toggle-risk-zones" checked>
         </label>
 
-        <!-- Layer 3 -->
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #06B6D4;"></span>Layer 3: Monitored Rivers</span>
+          <span><span class="layer-indicator" style="background: #06B6D4;"></span>Layer 3: Monitored River Transects</span>
           <input type="checkbox" id="toggle-rivers" checked>
         </label>
 
-        <!-- Layer 4 -->
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #10B981;"></span>Layer 4: Safe Shelters</span>
+          <span><span class="layer-indicator" style="background: #10B981;"></span>Layer 4: Emergency Shelters</span>
           <input type="checkbox" id="toggle-shelters" checked>
         </label>
 
-        <!-- Layer 5 -->
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #DC2626;"></span>Layer 5: Hospitals</span>
+          <span><span class="layer-indicator" style="background: #DC2626;"></span>Layer 5: Medical Trauma Centers</span>
           <input type="checkbox" id="toggle-hospitals" checked>
         </label>
 
-        <!-- Layer 6 -->
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #3B82F6;"></span>Layer 6: Rainfall Stations</span>
+          <span><span class="layer-indicator" style="background: #0284C7;"></span>Layer 6: Weather Rain Stations</span>
           <input type="checkbox" id="toggle-rainfall" checked>
         </label>
       </div>
     </div>
 
-    <!-- Floating Bottom Telemetry Bar -->
-    <div class="map-telemetry-hud">
+    <!-- Floating Bottom Telemetry Ribbon -->
+    <div class="map-telemetry-hud tactical-box">
       <div class="telemetry-item">
-        <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Periyar Stage:</span>
-        <span class="telemetry-value" style="color: #EF4444;">9.8m (DANGER)</span>
+        <span style="color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase;">Periyar Stem Stage:</span>
+        <span class="telemetry-value" style="color: #EF4444;">9.8m [CRITICAL BREACH]</span>
       </div>
 
       <div class="telemetry-item">
-        <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Peak Downpour:</span>
+        <span style="color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase;">Peak Downpour:</span>
         <span class="telemetry-value" style="color: #60A5FA;">178.0 mm / 24h</span>
       </div>
 
       <div class="telemetry-item">
-        <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Open Shelters:</span>
-        <span class="telemetry-value" style="color: #10B981;">5 Active Centers</span>
+        <span style="color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase;">Relief Status:</span>
+        <span class="telemetry-value" style="color: #10B981;">5 Camps Operational</span>
       </div>
 
       <div class="telemetry-item">
         <a href="/alerts" class="btn btn-sm btn-danger" style="padding: 0.3rem 0.75rem;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-          3 Active Alerts
+          Active Warnings (3)
         </a>
       </div>
     </div>
@@ -155,7 +169,6 @@
     document.addEventListener("DOMContentLoaded", () => {
       initFloodMap("map-container");
 
-      // Check if URL specifies location focus
       const urlParams = new URLSearchParams(window.location.search);
       const focusParam = urlParams.get("focus");
       if (focusParam) {

@@ -10,12 +10,24 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/responsive.css">
 </head>
-<body>
+<body class="tactical-grid-bg">
 
-  <!-- Prototype Notice -->
-  <div class="disclaimer-banner">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <span><strong>Authorized Administrative Portal:</strong> Manage spatial coordinates, sensor gauges, and public emergency bulletins.</span>
+  <!-- Top Telemetry Status Ribbon -->
+  <div class="telemetry-ticker-bar">
+    <div class="ticker-left">
+      <div class="ticker-item">
+        <span class="pulse-beacon"></span>
+        <span>ADMIN SECURE CONSOLE</span>
+      </div>
+      <div class="ticker-item mono" style="color: var(--accent-blue);">
+        <span>SYS CLOCK:</span>
+        <span id="mission-clock">2026-09-13 11:25:00 UTC</span>
+      </div>
+    </div>
+    <div class="ticker-marquee" id="incident-ticker-text">
+      <span class="ticker-tag" style="background: rgba(14,165,233,0.2); color:#7DD3FC; border-color:rgba(14,165,233,0.4);">AUTH</span>
+      <strong>ROOT PERMISSIONS ENABLED</strong> — SPATIAL CRUD & TELEMETRY SYNC ACTIVE
+    </div>
   </div>
 
   <!-- Navigation Bar -->
@@ -55,15 +67,19 @@
 
   <!-- Main Content -->
   <main class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
-    <!-- Admin Stats Overview Cards (Section 20) -->
+    <!-- Admin Stats Overview Cards -->
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
       <div>
-        <h1 style="font-size: 2.2rem;">GIS Emergency Operations Center</h1>
+        <div style="display: inline-flex; align-items: center; gap: 0.4rem; color: #38BDF8; font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          ROOT ADMINISTRATIVE CONSOLE
+        </div>
+        <h1 style="font-size: 2.2rem;">GIS Operations Management</h1>
         <p>Live telemetry synchronization and master spatial record administration.</p>
       </div>
       <div>
         <span class="badge badge-low" style="font-size: 0.82rem; padding: 0.4rem 0.8rem;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
           Admin Authenticated
         </span>
       </div>
@@ -71,34 +87,28 @@
 
     <!-- 5 Summary KPI Cards -->
     <div class="status-grid" style="margin-top: 0; margin-bottom: 2.5rem;">
-      <div class="kpi-card">
+      <div class="kpi-card low">
         <div class="kpi-header"><span class="kpi-label">Monitored Areas</span></div>
         <div id="adm-kpi-areas" class="kpi-val" style="color: #38BDF8;">5</div>
         <div class="kpi-sub">Central Basin District</div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card critical">
         <div class="kpi-header"><span class="kpi-label">High / Critical Zones</span></div>
         <div id="adm-kpi-high" class="kpi-val" style="color: #EF4444;">2</div>
         <div class="kpi-sub">Zones A & B</div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card low">
         <div class="kpi-header"><span class="kpi-label">Safe Shelters</span></div>
         <div id="adm-kpi-shelters" class="kpi-val" style="color: #10B981;">5</div>
-        <div class="kpi-sub">Designated Relief Camps</div>
+        <div class="kpi-sub">Designated Camps</div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card medium">
         <div class="kpi-header"><span class="kpi-label">Active Hospitals</span></div>
         <div id="adm-kpi-hospitals" class="kpi-val" style="color: #60A5FA;">4</div>
-        <div class="kpi-sub">Trauma & ICU Wings</div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-header"><span class="kpi-label">Active Warnings</span></div>
-        <div id="adm-kpi-alerts" class="kpi-val" style="color: #F87171;">3</div>
-        <div class="kpi-sub">Live Bulletins</div>
+        <div class="kpi-sub">Trauma Wings</div>
       </div>
     </div>
 
@@ -114,7 +124,7 @@
     <div id="tab-flood-areas" class="adm-tab-content">
       <div style="display: grid; grid-template-columns: 1.1fr 1.9fr; gap: 2rem; align-items: start;">
         <!-- Add / Edit Form -->
-        <div class="card">
+        <div class="card tactical-box">
           <h3 class="card-title">Add / Update Flood Area</h3>
           <form id="form-flood-area">
             <input type="hidden" id="fa-id">
@@ -125,11 +135,11 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
               <div class="form-group">
                 <label class="form-label">Latitude</label>
-                <input type="number" id="fa-lat" class="form-input" step="0.0001" required value="10.052">
+                <input type="number" id="fa-lat" class="form-input mono" step="0.0001" required value="10.052">
               </div>
               <div class="form-group">
                 <label class="form-label">Longitude</label>
-                <input type="number" id="fa-lng" class="form-input" step="0.0001" required value="76.325">
+                <input type="number" id="fa-lng" class="form-input mono" step="0.0001" required value="76.325">
               </div>
             </div>
             <div class="form-group">
@@ -144,11 +154,11 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
               <div class="form-group">
                 <label class="form-label">Rainfall (mm)</label>
-                <input type="number" id="fa-rain" class="form-input" value="65.0" step="0.5">
+                <input type="number" id="fa-rain" class="form-input mono" value="65.0" step="0.5">
               </div>
               <div class="form-group">
                 <label class="form-label">Water Level (m)</label>
-                <input type="number" id="fa-water" class="form-input" value="6.2" step="0.1">
+                <input type="number" id="fa-water" class="form-input mono" value="6.2" step="0.1">
               </div>
             </div>
             <div class="form-group">
@@ -160,7 +170,7 @@
         </div>
 
         <!-- Areas List Table -->
-        <div class="card">
+        <div class="card tactical-box">
           <h3 class="card-title">Configured Flood Areas</h3>
           <div class="data-table-container">
             <table class="data-table">
@@ -184,7 +194,7 @@
 
     <!-- TAB 2: River Data Management -->
     <div id="tab-rivers" class="adm-tab-content" style="display:none;">
-      <div class="card">
+      <div class="card tactical-box">
         <h3 class="card-title">River Monitoring Stations & Warning Stages</h3>
         <div class="data-table-container">
           <table class="data-table">
@@ -209,7 +219,7 @@
     <!-- TAB 3: Emergency Alert Management -->
     <div id="tab-alerts" class="adm-tab-content" style="display:none;">
       <div style="display: grid; grid-template-columns: 1fr 1.8fr; gap: 2rem; align-items: start;">
-        <div class="card">
+        <div class="card tactical-box">
           <h3 class="card-title">Broadcast Emergency Bulletin</h3>
           <form id="form-create-alert">
             <div class="form-group">
@@ -248,7 +258,7 @@
           </form>
         </div>
 
-        <div class="card">
+        <div class="card tactical-box">
           <h3 class="card-title">Active & Archived Alerts</h3>
           <div class="data-table-container">
             <table class="data-table">
@@ -272,7 +282,7 @@
 
     <!-- TAB 4: Safe Locations Management -->
     <div id="tab-shelters" class="adm-tab-content" style="display:none;">
-      <div class="card">
+      <div class="card tactical-box">
         <h3 class="card-title">Emergency Shelters & Relief Camps</h3>
         <div class="data-table-container">
           <table class="data-table">
@@ -344,7 +354,6 @@
         document.getElementById("adm-kpi-high").textContent = (s.high_risk + s.critical_risk);
         document.getElementById("adm-kpi-shelters").textContent = s.open_shelters;
         document.getElementById("adm-kpi-hospitals").textContent = s.hospitals_count;
-        document.getElementById("adm-kpi-alerts").textContent = s.active_alerts;
       } catch (e) {
         console.log("Stats err:", e);
       }
@@ -390,7 +399,7 @@
           <tr>
             <td><strong>${r.river_name}</strong></td>
             <td>
-              <input type="number" id="riv-lvl-${r.id}" class="form-input" style="width:90px; display:inline-block;" value="${r.water_level}" step="0.1">
+              <input type="number" id="riv-lvl-${r.id}" class="form-input mono" style="width:90px; display:inline-block;" value="${r.water_level}" step="0.1">
             </td>
             <td class="mono">${r.warning_level} m</td>
             <td class="mono">${r.danger_level} m</td>
@@ -484,7 +493,6 @@
     }
 
     function setupAdminForms() {
-      // Create Flood Area Form
       document.getElementById("form-flood-area").addEventListener("submit", async (e) => {
         e.preventDefault();
         const payload = {
@@ -508,7 +516,6 @@
         }
       });
 
-      // Broadcast Alert Form
       document.getElementById("form-create-alert").addEventListener("submit", async (e) => {
         e.preventDefault();
         const payload = {

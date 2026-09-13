@@ -13,12 +13,24 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 </head>
-<body>
+<body class="tactical-grid-bg">
 
-  <!-- Prototype Notice -->
-  <div class="disclaimer-banner">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <span><strong>Prototype Notice:</strong> Routes and shelter capacities are for educational demonstration. In a flood crisis, obey on-ground police and rescue service barricades.</span>
+  <!-- Top Telemetry Status Ribbon -->
+  <div class="telemetry-ticker-bar">
+    <div class="ticker-left">
+      <div class="ticker-item">
+        <span class="pulse-beacon"></span>
+        <span>SHELTER OPERATIONS ACTIVE</span>
+      </div>
+      <div class="ticker-item mono" style="color: var(--accent-blue);">
+        <span>SYS CLOCK:</span>
+        <span id="mission-clock">2026-09-13 11:25:00 UTC</span>
+      </div>
+    </div>
+    <div class="ticker-marquee" id="incident-ticker-text">
+      <span class="ticker-tag" style="background: rgba(16,185,129,0.2); color:#10B981; border-color:rgba(16,185,129,0.4);">REFUGE</span>
+      <strong>5 DESIGNATED RELIEF CENTERS OPERATIONAL</strong> — TOTAL CAPACITY: 5,600 PERSONS
+    </div>
   </div>
 
   <!-- Navigation Bar -->
@@ -61,13 +73,13 @@
     <!-- Page Header & GPS Proximity Trigger -->
     <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
       <div>
-        <div style="display: inline-flex; align-items: center; gap: 0.4rem; color: #10B981; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          Emergency Relief & Evacuation Corridor
+        <div style="display: inline-flex; align-items: center; gap: 0.4rem; color: #10B981; font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          CIVIL DEFENSE & EMERGENCY REFUGE CORRIDOR
         </div>
-        <h1 style="font-size: 2.4rem;">Safe Locations & Evacuation Routes</h1>
-        <p style="font-size: 1.05rem; max-width: 720px;">
-          Locate nearest designated shelters, community relief centers, and hospital trauma wings. Calculate safe evacuation routes with real-time distance and estimated transit time.
+        <h1 style="font-size: 2.4rem;">Safe Shelters & Evacuation Routing</h1>
+        <p style="font-size: 1.05rem; max-width: 740px;">
+          Identify designated highland relief sanctuaries, school camps, and trauma centers. Calculate terrain evacuation paths avoiding active flood breaches.
         </p>
       </div>
 
@@ -75,97 +87,136 @@
       <div>
         <button id="btn-find-nearest" class="btn btn-primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-          Find Nearest Safe Shelter (GPS)
+          Locate Nearest Safe Refuge (GPS)
         </button>
       </div>
     </div>
 
     <!-- Nearest Safe Location Spotlight (Section 17) -->
-    <div id="nearest-spotlight-card" class="card" style="border: 2px solid #10B981; background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(17, 24, 39, 0.95) 100%);">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div id="nearest-spotlight-card" class="card tactical-box" style="border: 1px solid rgba(16, 185, 129, 0.4); background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(14, 22, 40, 0.95) 100%); margin-bottom: 2.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
         <div>
-          <span class="badge badge-low" style="margin-bottom: 0.4rem;">Nearest Safe Location Recommendation</span>
-          <h2 id="nearest-name" style="font-size: 1.5rem; margin-top: 0.2rem;">Riverdale Community Center & Relief Camp</h2>
-          <p id="nearest-address" style="font-size: 0.9rem; color: #CBD5E1;">45 Highland Ring Road, South Sector</p>
+          <span class="badge badge-low" style="margin-bottom: 0.4rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+            OPTIMAL DISPATCH REFUGE
+          </span>
+          <h2 id="nearest-name" style="font-size: 1.6rem; margin-top: 0.3rem;">Riverdale Community Center & Relief Camp</h2>
+          <p id="nearest-address" style="font-size: 0.88rem; color: #CBD5E1; margin-top: 0.2rem;">45 Highland Ring Road, South Sector</p>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;">
+            <span class="badge" style="background: rgba(255,255,255,0.06); color:#CBD5E1;">Power Generators</span>
+            <span class="badge" style="background: rgba(255,255,255,0.06); color:#CBD5E1;">Potable Water Tank</span>
+            <span class="badge" style="background: rgba(255,255,255,0.06); color:#CBD5E1;">Medical First Aid</span>
+            <span class="badge" style="background: rgba(255,255,255,0.06); color:#CBD5E1;">Helipad Ground</span>
+          </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 2rem;">
           <div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Distance</div>
-            <div id="nearest-dist" class="mono" style="font-size: 1.8rem; font-weight: 800; color: #10B981;">1.2 KM</div>
+            <div style="font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase;">Proximity Distance</div>
+            <div id="nearest-dist" class="mono" style="font-size: 2.2rem; font-weight: 800; color: #10B981;">1.2 KM</div>
           </div>
 
           <div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Capacity</div>
-            <div id="nearest-cap" class="mono" style="font-size: 1.8rem; font-weight: 800; color: #FFFFFF;">850 People</div>
+            <div style="font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase;">Shelter Capacity</div>
+            <div id="nearest-cap" class="mono" style="font-size: 2.2rem; font-weight: 800; color: #FFFFFF;">850 Cap</div>
           </div>
 
-          <button id="btn-route-to-nearest" class="btn btn-primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-            View Evacuation Route
+          <button id="btn-route-to-nearest" class="btn btn-primary" style="height: 50px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            Plot Route
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Layout Grid: Map and Evacuation Route Calculator -->
-    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2rem; margin-bottom: 3rem; align-items: start;">
+    <!-- Layout Grid: Interactive Visualizer & Routing Controls -->
+    <div style="display: grid; grid-template-columns: 1.25fr 0.95fr; gap: 2rem; margin-bottom: 3rem; align-items: start;">
       <!-- Interactive Route Map -->
-      <div class="card" style="padding: 1rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding: 0.5rem;">
-          <h3 style="font-size: 1.15rem;">Evacuation Route Visualizer</h3>
-          <span id="route-distance-badge" class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93C5FD;">Distance: 1.2 km</span>
+      <div class="card tactical-box" style="padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h3 style="font-size: 1.15rem; font-family: var(--font-mono); display:flex; align-items:center; gap:0.5rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+            GEOSPATIAL EVACUATION VECTOR
+          </h3>
+          <span id="route-distance-badge" class="badge" style="background: rgba(56, 189, 248, 0.15); color: #7DD3FC; border: 1px solid rgba(56,189,248,0.3);">
+            DISTANCE: 1.2 KM
+          </span>
         </div>
-        <div id="route-map" style="height: 440px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-subtle);"></div>
+        <div id="route-map" style="height: 440px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-tactical);"></div>
       </div>
 
-      <!-- Route Planner Form & Safe Points Directory -->
+      <!-- Route Planner Form -->
       <div>
-        <div class="card">
+        <div class="card tactical-box">
           <h3 class="card-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-            Plan Evacuation Route
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+            Evacuation Transit Calculations
           </h3>
 
           <div class="form-group">
-            <label class="form-label">Starting Point (Current Location)</label>
+            <label class="form-label">Evacuation Origin</label>
             <select id="route-origin" class="form-select">
               <option value="10.05,76.32">North Riverdale Lowlands (Zone A)</option>
               <option value="10.06,76.38">East Delta Agricultural Sector (Zone B)</option>
               <option value="10.03,76.33">Central Metro Riverside Ward (Zone C)</option>
-              <option value="10.04,76.34" selected>District Central Hub (Simulated GPS)</option>
+              <option value="10.04,76.34" selected>District Central Operations Hub (GPS Simulated)</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Destination (Shelter or Hospital)</label>
+            <label class="form-label">Designated Destination Refuge</label>
             <select id="route-dest" class="form-select">
               <!-- Populated dynamically -->
             </select>
           </div>
 
-          <div style="background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1.25rem;">
-            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.4rem;">
-              <span style="color: var(--text-muted);">Estimated Walking Time:</span>
-              <strong id="time-walk" class="mono" style="color: #60A5FA;">~ 16 Mins</strong>
+          <!-- Transit Breakdown Cards -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;">
+            <div style="background: rgba(7, 11, 20, 0.75); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.85rem;">
+              <div style="font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase;">
+                On Foot (Walking)
+              </div>
+              <div id="time-walk" class="mono" style="font-size: 1.25rem; font-weight: 800; color: #60A5FA; margin-top: 0.2rem;">
+                ~ 16 Mins
+              </div>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">4.5 km/h avg pace</span>
             </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
-              <span style="color: var(--text-muted);">Estimated Driving Time:</span>
-              <strong id="time-drive" class="mono" style="color: #10B981;">~ 4 Mins</strong>
+
+            <div style="background: rgba(7, 11, 20, 0.75); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.85rem;">
+              <div style="font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase;">
+                Emergency 4x4 / Vehicle
+              </div>
+              <div id="time-drive" class="mono" style="font-size: 1.25rem; font-weight: 800; color: #10B981; margin-top: 0.2rem;">
+                ~ 4 Mins
+              </div>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Wet pavement transit</span>
             </div>
           </div>
 
+          <!-- Breach Avoidance Advisory -->
+          <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid #F59E0B; border-radius: var(--radius-xs); padding: 0.75rem 0.9rem; margin-bottom: 1.25rem;">
+            <div style="font-size: 0.75rem; font-family: var(--font-mono); font-weight: 700; color: #F59E0B; text-transform: uppercase;">
+              HAZARD ROUTE PROTOCOL
+            </div>
+            <p style="font-size: 0.8rem; color: #E2E8F0; margin-top: 0.2rem; line-height: 1.4;">
+              Route utilizes elevated arterial bypass to avoid the low-tier underpass waterlogging on Periyar riverside.
+            </p>
+          </div>
+
           <button id="btn-draw-route" class="btn btn-secondary" style="width: 100%;">
-            Recalculate Evacuation Path
+            Recalculate Evacuation Vector
           </button>
         </div>
       </div>
     </div>
 
     <!-- Safe Locations & Hospitals Data Table -->
-    <div class="card">
+    <div class="card tactical-box">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
-        <h3 class="card-title" style="margin-bottom:0;">Designated Emergency Shelters & Medical Hubs</h3>
+        <h3 class="card-title" style="margin-bottom:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          Refuge Directory & Medical Facilities
+        </h3>
         <div style="display:flex; gap: 0.5rem;">
           <button class="btn btn-sm btn-secondary filter-loc-btn active" data-type="ALL">All Centers</button>
           <button class="btn btn-sm btn-secondary filter-loc-btn" data-type="SHELTER">Shelters Only</button>
@@ -177,12 +228,12 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Name</th>
+              <th>Sanctuary Name</th>
               <th>Category</th>
               <th>Capacity / Beds</th>
               <th>Status</th>
-              <th>Contact Phone</th>
-              <th>Action</th>
+              <th>Direct Line</th>
+              <th>Navigation</th>
             </tr>
           </thead>
           <tbody id="safe-locations-table-body">
@@ -196,7 +247,7 @@
   <!-- Footer -->
   <footer class="footer">
     <div class="container footer-bottom">
-      <div>&copy; 2026 FloodGuard Project. Evacuation & Shelter Coordination Engine.</div>
+      <div>&copy; 2026 FloodGuard Project. Civil Evacuation & Refuge Coordination Engine.</div>
       <div>Designed with Leaflet.js, OpenStreetMap, Python Flask & Scikit-Learn.</div>
     </div>
   </footer>
@@ -212,9 +263,8 @@
     let originMarker = null;
     let destMarker = null;
     let allLocations = [];
-    let userCoords = [10.04, 76.34]; // Default user coords
+    let userCoords = [10.04, 76.34];
 
-    // Haversine Distance in Kilometers
     function calcDistanceKm(lat1, lon1, lat2, lon2) {
       const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -224,11 +274,7 @@
         Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
         Math.sin(dLon/2) * Math.sin(dLon/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return roundTo(R * c, 1);
-    }
-
-    function roundTo(n, digits) {
-      return Number(n.toFixed(digits));
+      return Number((R * c).toFixed(1));
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
@@ -257,7 +303,7 @@
           name: s.location_name,
           type: s.type,
           is_hospital: false,
-          capacity: `${s.capacity} People`,
+          capacity: `${s.capacity} Persons`,
           contact: s.contact,
           status: s.status,
           lat: s.latitude,
@@ -266,7 +312,7 @@
 
         const formattedHospitals = hospitals.map(h => ({
           name: h.hospital_name,
-          type: "Hospital",
+          type: "Hospital Trauma",
           is_hospital: true,
           capacity: `${h.available_beds} Beds Avail`,
           contact: h.contact,
@@ -277,7 +323,6 @@
 
         allLocations = [...formattedShelters, ...formattedHospitals];
 
-        // Populate Destination Dropdown
         const destSelect = document.getElementById("route-dest");
         destSelect.innerHTML = "";
         allLocations.forEach((loc, idx) => {
@@ -315,7 +360,7 @@
             <td class="mono">${l.contact || "N/A"}</td>
             <td>
               <button class="btn btn-sm btn-primary" onclick="setRouteDestination(${l.lat}, ${l.lng}, '${l.name}')">
-                Route Here (${dist} km)
+                Vector Here (${dist} km)
               </button>
             </td>
           </tr>
@@ -366,37 +411,33 @@
       const oLat = originParts[0], oLng = originParts[1];
       const dLat = destParts[0], dLng = destParts[1];
 
-      // Calculate distance
       const distKm = calcDistanceKm(oLat, oLng, dLat, dLng);
-      document.getElementById("route-distance-badge").textContent = `Distance: ${distKm} KM`;
+      document.getElementById("route-distance-badge").textContent = `DISTANCE: ${distKm} KM`;
 
-      // Estimated Times (Walking ~ 4.5 km/h, Driving ~ 25 km/h in wet conditions)
       const walkMins = Math.max(2, Math.round((distKm / 4.5) * 60));
       const driveMins = Math.max(1, Math.round((distKm / 25.0) * 60));
 
       document.getElementById("time-walk").textContent = `~ ${walkMins} Mins`;
       document.getElementById("time-drive").textContent = `~ ${driveMins} Mins`;
 
-      // Clear previous layers
       if (routeLine) routeMap.removeLayer(routeLine);
       if (originMarker) routeMap.removeLayer(originMarker);
       if (destMarker) routeMap.removeLayer(destMarker);
 
-      // Create Route Polyline with realistic intermediate waypoint
       const midLat = (oLat + dLat) / 2 + 0.003;
       const midLng = (oLng + dLng) / 2 - 0.002;
       const routePoints = [[oLat, oLng], [midLat, midLng], [dLat, dLng]];
 
       routeLine = L.polyline(routePoints, {
-        color: "#3B82F6",
+        color: "#38BDF8",
         weight: 5,
-        opacity: 0.85,
+        opacity: 0.9,
         dashArray: "8, 8"
       }).addTo(routeMap);
 
       originMarker = L.circleMarker([oLat, oLng], {
         radius: 8,
-        fillColor: "#3B82F6",
+        fillColor: "#0284C7",
         color: "#FFFFFF",
         weight: 2,
         fillOpacity: 1
@@ -418,18 +459,16 @@
       document.getElementById("route-origin").addEventListener("change", drawCurrentRoute);
       document.getElementById("route-dest").addEventListener("change", drawCurrentRoute);
 
-      // GPS Nearest Search
       document.getElementById("btn-find-nearest").addEventListener("click", () => {
-        showToast("Locating nearest refuge center...", "info");
+        showToast("Scanning GPS satellite lock...", "info");
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             userCoords = [pos.coords.latitude, pos.coords.longitude];
             updateNearestSpotlight();
             renderTable("ALL");
-            showToast("Calculated nearest shelters to your GPS position!", "success");
+            showToast("GPS Coordinate Locked! Calculated nearest shelters.", "success");
           },
           () => {
-            // Default simulated user location
             userCoords = [10.05, 76.32];
             updateNearestSpotlight();
             renderTable("ALL");
@@ -438,7 +477,6 @@
         );
       });
 
-      // Table filter buttons
       document.querySelectorAll(".filter-loc-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           document.querySelectorAll(".filter-loc-btn").forEach(b => b.classList.remove("active"));

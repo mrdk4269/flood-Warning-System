@@ -1,7 +1,14 @@
 /**
- * FloodGuard Flood Risk Analysis Module
- * Interactive simulator and rule-based risk evaluation.
+ * FloodGuard Hydrological Risk Analysis & Scenario Simulator
+ * Dynamic SVG tachometer gauge, preset scenarios, and multi-factor breakdown.
  */
+
+const PRESETS = {
+  monsoon: { rain: 145, river: 8.8, elev: 4, dist: 110, hist: "Severe" },
+  spillway: { rain: 95, river: 9.8, elev: 3, dist: 60, hist: "Severe" },
+  urban: { rain: 65, river: 6.2, elev: 8, dist: 320, hist: "Moderate" },
+  nominal: { rain: 20, river: 3.5, elev: 28, dist: 1200, hist: "Nil" }
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   initRiskPage();
@@ -10,7 +17,9 @@ document.addEventListener("DOMContentLoaded", () => {
 async function initRiskPage() {
   await loadAreaSelector();
   setupSimulatorEvents();
-  // Check URL params for area preselection
+  setupPresetButtons();
+
+  // Check URL params
   const urlParams = new URLSearchParams(window.location.search);
   const areaParam = urlParams.get("area");
   if (areaParam) {
@@ -20,7 +29,6 @@ async function initRiskPage() {
       loadSelectedAreaData(areaParam);
     }
   } else {
-    // Trigger initial calculation with default sliders
     recalculateRisk();
   }
 }
@@ -31,11 +39,11 @@ async function loadAreaSelector() {
 
   try {
     const areas = await API.getFloodAreas();
-    sel.innerHTML = '<option value="">-- Choose Monitored Area --</option>';
+    sel.innerHTML = '<option value="">-- Choose Monitored Basin Area --</option>';
     areas.forEach(a => {
       const opt = document.createElement("option");
       opt.value = a.area_name;
-      opt.textContent = `${a.area_name} (${a.risk_level})`;
+      opt.textContent = `${a.area_name} [${a.risk_level.toUpperCase()}]`;
       opt.dataset.rain = a.rainfall;
       opt.dataset.water = a.water_level;
       opt.dataset.elevation = a.elevation;
@@ -47,7 +55,7 @@ async function loadAreaSelector() {
       loadSelectedAreaData(e.target.value);
     });
   } catch (err) {
-    console.error("Failed to load areas for selector:", err);
+    console.error("Failed to load areas:", err);
   }
 }
 
@@ -56,19 +64,19 @@ function loadSelectedAreaData(areaName) {
   const opt = Array.from(sel.options).find(o => o.value === areaName);
   if (!opt) return;
 
-  document.getElementById("slider-rain").value = opt.dataset.rain || 80;
-  document.getElementById("val-rain").textContent = `${opt.dataset.rain || 80} mm`;
-
-  document.getElementById("slider-river").value = opt.dataset.water || 7.0;
-  document.getElementById("val-river").textContent = `${opt.dataset.water || 7.0} m`;
-
-  document.getElementById("slider-elev").value = opt.dataset.elevation || 8;
-  document.getElementById("val-elev").textContent = `${opt.dataset.elevation || 8} m`;
-
-  document.getElementById("slider-dist").value = opt.dataset.distance || 200;
-  document.getElementById("val-dist").textContent = `${opt.dataset.distance || 200} m`;
+  setSliderValue("slider-rain", "val-rain", opt.dataset.rain || 80, "mm");
+  setSliderValue("slider-river", "val-river", opt.dataset.water || 7.0, "m");
+  setSliderValue("slider-elev", "val-elev", opt.dataset.elevation || 8, "m");
+  setSliderValue("slider-dist", "val-dist", opt.dataset.distance || 200, "m");
 
   recalculateRisk();
+}
+
+function setSliderValue(sliderId, valId, value, unit) {
+  const s = document.getElementById(sliderId);
+  const v = document.getElementById(valId);
+  if (s) s.value = value;
+  if (v) v.textContent = `${value} ${unit}`;
 }
 
 function setupSimulatorEvents() {
@@ -96,9 +104,29 @@ function setupSimulatorEvents() {
   }
 }
 
+function setupPresetButtons() {
+  document.querySelectorAll(".preset-pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const presetKey = btn.dataset.preset;
+      const p = PRESETS[presetKey];
+      if (p) {
+        setSliderValue("slider-rain", "val-rain", p.rain, "mm");
+        setSliderValue("slider-river", "val-river", p.river, "m");
+        setSliderValue("slider-elev", "val-elev", p.elev, "m");
+        setSliderValue("slider-dist", "val-dist", p.dist, "m");
+        const histSel = document.getElementById("select-hist");
+        if (histSel) histSel.value = p.hist;
+
+        recalculateRisk();
+        showToast(`Preset loaded: ${btn.textContent.trim()}`, "info");
+      }
+    });
+  });
+}
+
 async function recalculateRisk() {
-  const rain = parseFloat(document.getElementById("slider-rain")?.value || 60);
-  const river = parseFloat(document.getElementById("slider-river")?.value || 6.5);
+  const rain = parseFloat(document.getElementById("slider-rain")?.value || 65);
+  const river = parseFloat(document.getElementById("slider-river")?.value || 6.8);
   const elev = parseFloat(document.getElementById("slider-elev")?.value || 8);
   const dist = parseFloat(document.getElementById("slider-dist")?.value || 250);
   const hist = document.getElementById("select-hist")?.value || "Moderate";
@@ -114,22 +142,28 @@ async function recalculateRisk() {
 
     renderRiskResult(result);
   } catch (err) {
-    console.error("Risk calculation failed:", err);
+    console.error("Risk calculation error:", err);
   }
 }
 
 function renderRiskResult(data) {
   // Score Display
   const scoreElem = document.getElementById("risk-score-value");
-  const gaugeFill = document.getElementById("risk-gauge-fill");
+  const gaugeNeedle = document.getElementById("gauge-needle");
   const badgeContainer = document.getElementById("risk-level-badge");
   const advisoryElem = document.getElementById("risk-action-advisory");
 
-  if (scoreElem) scoreElem.textContent = data.risk_score;
-  if (gaugeFill) {
-    gaugeFill.style.width = `${data.risk_score}%`;
-    gaugeFill.style.backgroundColor = data.color;
+  if (scoreElem) {
+    scoreElem.textContent = data.risk_score;
+    scoreElem.style.color = data.color;
   }
+
+  // Calculate needle angle on a 180-degree tachometer arc (-90deg to +90deg)
+  if (gaugeNeedle) {
+    const angle = -90 + (data.risk_score / 100) * 180;
+    gaugeNeedle.style.transform = `rotate(${angle}deg)`;
+  }
+
   if (badgeContainer) {
     badgeContainer.innerHTML = renderRiskBadge(data.risk_level);
   }
