@@ -1606,3 +1606,77 @@ a:hover {
   flex-shrink: 0;
 }
 
+/* =============================================================================
+   NATIONWIDE INDIA GEOGRAPHY & CASCADING FILTER STYLES
+   ============================================================================= */
+
+.location-status-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  background: rgba(15, 23, 42, 0.8);
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.location-status-ribbon .active-loc {
+  color: #38BDF8;
+  font-weight: 700;
+}
+
+.layer-category-title {
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-top: 0.6rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.15rem;
+}
+
+.layer-toggle-group {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.layer-toggle-group::-webkit-scrollbar {
+  width: 4px;
+}
+.layer-toggle-group::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.india-kpi-macro-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.45rem;
+}
+
+.state-risk-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.state-risk-item:hover {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.3);
+  transform: translateX(2px);
+}
+

@@ -71,7 +71,7 @@
   <div class="map-page-wrapper">
     <div id="map-container"></div>
 
-    <!-- Floating Map Mode Control Bar (Requirements #4, #6, #8) -->
+    <!-- Floating Map Mode Control Bar (Requirements #1, #2, #4, #8) -->
     <div class="map-mode-control-bar">
       <div class="mode-toggle-group">
         <button id="btn-mode-historical" class="mode-btn" onclick="setMapMode('HISTORICAL')" title="View Archived & Historical Flood Disasters">
@@ -85,12 +85,32 @@
 
       <div class="mode-divider"></div>
 
+      <!-- Cascading Geographical Filters (Requirement #2 & #4) -->
+      <div class="mode-section" title="Country: India">
+        <span class="hud-tag">COUNTRY:</span>
+        <select id="country-selector" class="select-mini" disabled>
+          <option value="India" selected>🇮🇳 India</option>
+        </select>
+      </div>
+
+      <div class="mode-section">
+        <span class="hud-tag">STATE:</span>
+        <select id="state-selector" class="select-mini" onchange="onStateSelectChange(this.value)">
+          <option value="all" selected>All States (28+)</option>
+        </select>
+      </div>
+
+      <div class="mode-section">
+        <span class="hud-tag">DISTRICT:</span>
+        <select id="district-selector" class="select-mini" onchange="onDistrictSelectChange(this.value)">
+          <option value="all" selected>All Districts</option>
+        </select>
+      </div>
+
       <div class="mode-section">
         <span class="hud-tag">BASIN:</span>
-        <select id="region-selector" class="select-mini" onchange="onRegionChange(this.value)">
-          <option value="odisha" selected>🇮🇳 Odisha (Mahanadi Basin)</option>
-          <option value="kerala">🇮🇳 Kerala (Periyar Basin)</option>
-          <option value="all">🇮🇳 All India Stations</option>
+        <select id="basin-selector" class="select-mini" onchange="onBasinSelectChange(this.value)">
+          <option value="all" selected>All River Basins</option>
         </select>
       </div>
 
@@ -114,19 +134,33 @@
 
       <button id="btn-toggle-drawer" class="btn btn-sm btn-secondary" onclick="toggleLiveDashboardDrawer()" style="padding: 0.2rem 0.6rem; font-size: 0.72rem; display: flex; align-items: center; gap: 0.35rem;">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 9h3"/><path d="M15 15h3"/></svg>
-        <span>LIVE DASHBOARD</span>
+        <span>INDIA DASHBOARD</span>
       </button>
     </div>
 
-    <!-- Live Data Dashboard Drawer (Requirement #5 & #10) -->
+    <!-- Dynamic Location Status HUD Ribbon (Requirement #13) -->
+    <div style="position: absolute; top: 4.2rem; left: 1.25rem; z-index: 999;">
+      <div class="location-status-ribbon">
+        <span style="color:#94A3B8; font-weight:700;">LOCATION:</span>
+        <span class="active-loc" id="loc-country">INDIA</span>
+        <span>›</span>
+        <span class="active-loc" id="loc-state">ALL STATES</span>
+        <span>›</span>
+        <span class="active-loc" id="loc-district">ALL DISTRICTS</span>
+        <span>›</span>
+        <span class="active-loc" id="loc-basin">ALL BASINS</span>
+      </div>
+    </div>
+
+    <!-- Live Data Dashboard Drawer (Requirement #5, #6, #10) -->
     <div id="live-dashboard-drawer" class="live-dashboard-drawer">
       <div class="drawer-header">
         <div class="drawer-title-group">
           <div class="drawer-title">
             <span class="live-dot-pulse"></span>
-            <span id="drawer-region-name">Odisha (Mahanadi River Basin)</span>
+            <span id="drawer-region-name">TOTAL INDIA FLOOD STATUS</span>
           </div>
-          <div class="drawer-subtitle" id="drawer-last-updated">Updating live telemetry...</div>
+          <div class="drawer-subtitle" id="drawer-last-updated">Updating nationwide telemetry...</div>
         </div>
         <button class="drawer-close-btn" onclick="toggleLiveDashboardDrawer()" title="Close Drawer">✕</button>
       </div>
@@ -139,7 +173,7 @@
             <span id="status-overall-badge" style="color: #34D399;">● OPERATIONAL</span>
           </div>
           <div class="subsystem-item">
-            <span style="color: var(--text-muted);">Rainfall (IMD/AWS):</span>
+            <span style="color: var(--text-muted);">Rainfall (Open-Meteo/IMD):</span>
             <span id="status-rainfall-val" class="status-badge-avail">● Available</span>
           </div>
           <div class="subsystem-item">
@@ -147,7 +181,7 @@
             <span id="status-weather-val" class="status-badge-avail">● Available</span>
           </div>
           <div class="subsystem-item">
-            <span style="color: var(--text-muted);">River Level (CWC):</span>
+            <span style="color: var(--text-muted);">River Level (CWC/GloFAS):</span>
             <span id="status-river-val" class="status-badge-avail">● Available</span>
           </div>
           <div class="subsystem-item">
@@ -160,15 +194,15 @@
           </div>
         </div>
 
-        <!-- Basin Macro KPIs -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+        <!-- India Macro Overview KPIs (Requirement #6) -->
+        <div class="india-kpi-macro-grid">
           <div class="metric-cell">
-            <div class="metric-label">Peak Downpour (24h)</div>
-            <div id="drawer-peak-rain" class="metric-value" style="color: #38BDF8;">-- mm</div>
+            <div class="metric-label">Monitored States</div>
+            <div id="drawer-monitored-states" class="metric-value" style="color: #38BDF8;">28+ States</div>
           </div>
           <div class="metric-cell">
-            <div class="metric-label">Max Risk Score</div>
-            <div id="drawer-max-risk" class="metric-value" style="color: #F59E0B;">-- / 100</div>
+            <div class="metric-label">Active Flood Areas</div>
+            <div id="drawer-active-areas" class="metric-value" style="color: #F59E0B;">--</div>
           </div>
           <div class="metric-cell">
             <div class="metric-label">Critical River Gauges</div>
@@ -177,6 +211,25 @@
           <div class="metric-cell">
             <div class="metric-label">Active Warnings</div>
             <div id="drawer-active-warnings" class="metric-value" style="color: #F87171;">--</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-label">Heavy Downpour (24h)</div>
+            <div id="drawer-peak-rain" class="metric-value" style="color: #60A5FA;">-- mm</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-label">Monitored Basins</div>
+            <div id="drawer-monitored-basins" class="metric-value" style="color: #34D399;">9 Basins</div>
+          </div>
+        </div>
+
+        <!-- State-by-State Flood Risk Summary -->
+        <div>
+          <div style="font-size: 0.72rem; font-weight: 800; color: #FFFFFF; text-transform: uppercase; margin-bottom: 0.45rem; display: flex; justify-content: space-between;">
+            <span>STATE-LEVEL VULNERABILITY WATCH</span>
+            <span class="provenance-tag provenance-live">NATIONAL</span>
+          </div>
+          <div id="drawer-state-breakdown" style="display: flex; flex-direction: column; gap: 0.35rem; max-height: 160px; overflow-y: auto;">
+            <!-- Rendered by JS -->
           </div>
         </div>
 
@@ -216,17 +269,17 @@
       </div>
     </div>
 
-    <!-- Floating HUD Panel (Layer Controls, Basemap & Search) -->
-    <div class="map-hud-panel tactical-box">
+    <!-- Floating HUD Panel (12 Independent GIS Layers & Search) -->
+    <div class="map-hud-panel tactical-box" style="max-height: calc(100vh - 12rem); overflow-y: auto;">
       <div class="map-hud-title">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-          <span>SPATIAL LAYERS & HUD</span>
+          <span>12 GIS SPATIAL LAYERS</span>
         </div>
         <div style="display: flex; gap: 0.35rem;">
           <button id="btn-sync-meteo" class="btn btn-sm btn-primary" onclick="triggerLiveMeteoSync()" title="Fetch Real-Time Open-Meteo Weather & River Runoff" style="padding: 0.2rem 0.5rem; font-family: var(--font-mono); font-size: 0.72rem; display: flex; align-items: center; gap: 0.3rem;">
             <span style="width: 7px; height: 7px; background: #10B981; border-radius: 50%; display: inline-block;"></span>
-            LIVE METEO
+            SYNC
           </button>
           <button class="btn btn-sm btn-secondary" onclick="locateUser()" title="Acquire GPS Position" style="padding: 0.2rem 0.5rem; font-family: var(--font-mono); font-size: 0.72rem;">
             GPS
@@ -235,9 +288,9 @@
       </div>
 
       <!-- Basemap Switcher Dropdown -->
-      <div style="margin-bottom: 0.75rem;">
-        <label style="font-size: 0.7rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase;">Basemap Provider</label>
-        <select id="basemap-select" class="form-select" style="padding: 0.35rem 0.6rem; font-size: 0.8rem; font-family: var(--font-mono); margin-top: 0.2rem;">
+      <div style="margin-bottom: 0.6rem;">
+        <label style="font-size: 0.68rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase;">Basemap Provider</label>
+        <select id="basemap-select" class="form-select" style="padding: 0.3rem 0.5rem; font-size: 0.75rem; font-family: var(--font-mono); margin-top: 0.15rem;">
           <option value="dark" selected>Tactical Night Voyager (Dark)</option>
           <option value="bhuvan">🛰️ ISRO Bhuvan Space GIS (India)</option>
           <option value="nasa">🛰️ NASA Earth Daily Satellite (Terra / Space)</option>
@@ -246,46 +299,71 @@
         </select>
       </div>
 
-      <!-- Location Search -->
-      <div class="map-search-bar">
+      <!-- Universal Location Search (Requirement #9) -->
+      <div class="map-search-bar" style="margin-bottom: 0.6rem;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="map-search-input" type="text" class="map-search-input" placeholder="Search zone, river, or shelter...">
+        <input id="map-search-input" type="text" class="map-search-input" placeholder="Search State, District, River, Shelter...">
       </div>
 
-      <!-- 7 GIS Layer Toggles -->
+      <!-- 12 GIS Layer Toggles Grouped by Category (Requirement #7) -->
       <div class="layer-toggle-group">
+        <div class="layer-category-title">BOUNDARIES & GEOGRAPHY</div>
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #EF4444;"></span>Layer 1: Flood Inundation Polygons</span>
-          <input type="checkbox" id="toggle-flood-areas" checked>
+          <span><span class="layer-indicator" style="background: #38BDF8;"></span>Layer 1: India State Boundaries</span>
+          <input type="checkbox" id="toggle-state-boundaries" checked>
+        </label>
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #94A3B8;"></span>Layer 2: District Boundaries</span>
+          <input type="checkbox" id="toggle-district-boundaries">
+        </label>
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #06B6D4;"></span>Layer 3: Major River Channels</span>
+          <input type="checkbox" id="toggle-major-rivers" checked>
         </label>
 
+        <div class="layer-category-title">SURFACE HYDROLOGY & RAIN</div>
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #F59E0B;"></span>Layer 2: Risk Perimeters</span>
+          <span><span class="layer-indicator" style="background: #0284C7;"></span>Layer 4: River Monitoring Stations</span>
+          <input type="checkbox" id="toggle-river-stations" checked>
+        </label>
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #38BDF8;"></span>Layer 8: Live Rainfall Gauges</span>
+          <input type="checkbox" id="toggle-live-rainfall" checked>
+        </label>
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #EF4444;"></span>Layer 9: Flood Warning Alerts</span>
+          <input type="checkbox" id="toggle-flood-warnings" checked>
+        </label>
+
+        <div class="layer-category-title">FLOOD HAZARDS & FORECAST</div>
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #FBBF24;"></span>Layer 5: Historical Flood Areas</span>
+          <input type="checkbox" id="toggle-historical-floods" checked>
+        </label>
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #DC2626;"></span>Layer 6: Live Flood-Affected Areas</span>
+          <input type="checkbox" id="toggle-live-affected" checked>
+        </label>
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #F97316;"></span>Layer 7: Flood Risk Buffer Zones</span>
           <input type="checkbox" id="toggle-risk-zones" checked>
         </label>
-
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #06B6D4;"></span>Layer 3: Monitored River Transects</span>
-          <input type="checkbox" id="toggle-rivers" checked>
+          <span><span class="layer-indicator" style="background: #8B5CF6;"></span>Layer 12: 3-Day Forecast Risk Areas</span>
+          <input type="checkbox" id="toggle-forecast-risk" checked>
         </label>
 
+        <div class="layer-category-title">EMERGENCY INFRASTRUCTURE</div>
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #10B981;"></span>Layer 4: Emergency Shelters</span>
+          <span><span class="layer-indicator" style="background: #10B981;"></span>Layer 10: Emergency Shelters</span>
           <input type="checkbox" id="toggle-shelters" checked>
         </label>
-
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #DC2626;"></span>Layer 5: Medical Trauma Centers</span>
+          <span><span class="layer-indicator" style="background: #F43F5E;"></span>Layer 11: Medical Trauma Centers</span>
           <input type="checkbox" id="toggle-hospitals" checked>
         </label>
-
         <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #0284C7;"></span>Layer 6: Weather Rain Stations</span>
-          <input type="checkbox" id="toggle-rainfall" checked>
-        </label>
-
-        <label class="layer-toggle-item">
-          <span><span class="layer-indicator" style="background: #F97316;"></span>Layer 7: ISRO Bhuvan Space Remote Sensing</span>
+          <span><span class="layer-indicator" style="background: #F97316;"></span>Satellite: ISRO Bhuvan Remote Sensing</span>
           <input type="checkbox" id="toggle-bhuvan-overlay">
         </label>
       </div>
@@ -294,24 +372,24 @@
     <!-- Floating Bottom Telemetry Ribbon -->
     <div class="map-telemetry-hud tactical-box">
       <div class="telemetry-item">
-        <span style="color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase;">Periyar Stem Stage:</span>
-        <span class="telemetry-value" style="color: #EF4444;">9.8m [CRITICAL BREACH]</span>
+        <span style="color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase;">National River Peak:</span>
+        <span class="telemetry-value" id="ribbon-river-peak" style="color: #EF4444;">--</span>
       </div>
 
       <div class="telemetry-item">
         <span style="color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase;">Peak Downpour:</span>
-        <span class="telemetry-value" style="color: #60A5FA;">178.0 mm / 24h</span>
+        <span class="telemetry-value" id="ribbon-downpour" style="color: #60A5FA;">-- mm / 24h</span>
       </div>
 
       <div class="telemetry-item">
-        <span style="color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase;">Relief Status:</span>
-        <span class="telemetry-value" style="color: #10B981;">5 Camps Operational</span>
+        <span style="color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase;">Active Network:</span>
+        <span class="telemetry-value" id="ribbon-network" style="color: #10B981;">38 Monitored Stations</span>
       </div>
 
       <div class="telemetry-item">
-        <a href="/alerts" class="btn btn-sm btn-danger" style="padding: 0.3rem 0.75rem;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-          Active Warnings (3)
+        <a href="/alerts" id="ribbon-alerts-btn" class="btn btn-sm btn-danger" style="padding: 0.3rem 0.75rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+          Active Warnings (0)
         </a>
       </div>
     </div>

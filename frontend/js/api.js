@@ -178,28 +178,67 @@ const API = {
     return this.fetchJson("/api/live-data/status");
   },
 
-  async getLiveRainfall(region = "all") {
-    return this.fetchJson(`/api/live-data/rainfall?region=${encodeURIComponent(region)}`);
+  async getIndiaStates() {
+    return this.fetchJson("/api/india/states");
   },
 
-  async getLiveWeather(region = "all") {
-    return this.fetchJson(`/api/live-data/weather?region=${encodeURIComponent(region)}`);
+  async getIndiaDistricts(state = "") {
+    return this.fetchJson(`/api/india/districts${state ? "?state=" + encodeURIComponent(state) : ""}`);
   },
 
-  async getLiveRivers(region = "all") {
-    return this.fetchJson(`/api/live-data/rivers?region=${encodeURIComponent(region)}`);
+  async getIndiaBasins() {
+    return this.fetchJson("/api/india/basins");
   },
 
-  async getLiveWarnings(region = "all") {
-    return this.fetchJson(`/api/live-data/flood-warnings?region=${encodeURIComponent(region)}`);
+  async getIndiaOverview() {
+    return this.fetchJson("/api/india/overview");
   },
 
-  async getLiveDashboard(region = "all") {
-    return this.fetchJson(`/api/live-data/dashboard?region=${encodeURIComponent(region)}`);
+  async getIndiaStatesGeoJson() {
+    return this.fetchJson("/api/geojson/india-states");
   },
 
-  async refreshLiveData(region = "all") {
-    return this.fetchJson(`/api/live-data/refresh?region=${encodeURIComponent(region)}`, {
+  async getIndiaRiversGeoJson() {
+    return this.fetchJson("/api/geojson/india-rivers");
+  },
+
+  async getHistoricalFloodsGeoJson(params = {}) {
+    const q = new URLSearchParams(params).toString();
+    return this.fetchJson(`/api/geojson/historical-floods${q ? "?" + q : ""}`);
+  },
+
+  async getForecastRiskGeoJson(state = "") {
+    return this.fetchJson(`/api/geojson/forecast-risk${state ? "?state=" + encodeURIComponent(state) : ""}`);
+  },
+
+  async getLiveRainfall(params = {}) {
+    const q = typeof params === "string" ? `region=${encodeURIComponent(params)}` : new URLSearchParams(params).toString();
+    return this.fetchJson(`/api/live-data/rainfall?${q}`);
+  },
+
+  async getLiveWeather(params = {}) {
+    const q = typeof params === "string" ? `region=${encodeURIComponent(params)}` : new URLSearchParams(params).toString();
+    return this.fetchJson(`/api/live-data/weather?${q}`);
+  },
+
+  async getLiveRivers(params = {}) {
+    const q = typeof params === "string" ? `region=${encodeURIComponent(params)}` : new URLSearchParams(params).toString();
+    return this.fetchJson(`/api/live-data/rivers?${q}`);
+  },
+
+  async getLiveWarnings(params = {}) {
+    const q = typeof params === "string" ? `region=${encodeURIComponent(params)}` : new URLSearchParams(params).toString();
+    return this.fetchJson(`/api/live-data/flood-warnings?${q}`);
+  },
+
+  async getLiveDashboard(params = {}) {
+    const q = typeof params === "string" ? `region=${encodeURIComponent(params)}` : new URLSearchParams(params).toString();
+    return this.fetchJson(`/api/live-data/dashboard?${q}`);
+  },
+
+  async refreshLiveData(params = {}) {
+    const q = typeof params === "string" ? `region=${encodeURIComponent(params)}` : new URLSearchParams(params).toString();
+    return this.fetchJson(`/api/live-data/refresh?${q}`, {
       method: "POST"
     });
   },

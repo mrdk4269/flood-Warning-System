@@ -12,6 +12,14 @@ from backend.risk_calculator import calculate_flood_risk, update_config, CONFIG
 from backend.prediction import predict_flood
 from backend.data_service import LiveDataService
 from backend.live_india_service import LiveIndiaDataService
+from backend.india_geo_data import (
+    INDIAN_STATES, 
+    MAJOR_RIVER_BASINS, 
+    HISTORICAL_FLOOD_EVENTS, 
+    get_india_rivers_geojson, 
+    get_india_states_geojson, 
+    get_forecast_risk_geojson
+)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
@@ -674,7 +682,123 @@ def get_live_status():
     })
 
 # =============================================================================
-# REST API: UNIFIED LIVE INDIA FLOOD DATA SYSTEM (Requirements #5, #10, #11, #16, #17)
+# =============================================================================
+# REST API: NATIONWIDE INDIA GEOGRAPHY & FLOOD STATUS (Requirements #1 - #6)
+# =============================================================================
+
+@app.route("/api/india/states", methods=["GET"])
+def api_india_states():
+    """Returns list of all 28 Indian States & UTs with capitals, bounding boxes, and basins."""
+    states_list = [
+        {
+            "state_name": name,
+            "capital": meta["capital"],
+            "center": meta["center"],
+            "zoom": meta["zoom"],
+            "bbox": meta["bbox"],
+            "primary_basins": meta["primary_basins"],
+            "flood_prone_districts": meta["flood_prone_districts"],
+            "vulnerability_index": meta["vulnerability_index"],
+            "annual_flood_frequency": meta["annual_flood_frequency"]
+        }
+        for name, meta in sorted(INDIAN_STATES.items())
+    ]
+    return jsonify({
+        "status": "success",
+        "count": len(states_list),
+        "states": states_list,
+        "states_map": {name: meta for name, meta in sorted(INDIAN_STATES.items())}
+    })
+
+@app.route("/api/india/districts", methods=["GET"])
+def api_india_districts():
+    """Returns list of flood-vulnerable districts for a specific state or all districts."""
+    state_name = request.args.get("state")
+    if state_name and state_name in INDIAN_STATES:
+        districts = INDIAN_STATES[state_name]["flood_prone_districts"]
+        return jsonify({
+            "status": "success",
+            "state": state_name,
+            "districts": districts
+        })
+    all_districts = {name: meta["flood_prone_districts"] for name, meta in sorted(INDIAN_STATES.items())}
+    return jsonify({
+        "status": "success",
+        "districts_by_state": all_districts
+    })
+
+@app.route("/api/india/basins", methods=["GET"])
+def api_india_basins():
+    """Returns 9 major Indian river basins and hydrological profiles."""
+    basins_list = [
+        {
+            "basin_key": key,
+            **meta
+        }
+        for key, meta in sorted(MAJOR_RIVER_BASINS.items())
+    ]
+    return jsonify({
+        "status": "success",
+        "count": len(basins_list),
+        "basins": basins_list,
+        "basins_map": {key: meta for key, meta in sorted(MAJOR_RIVER_BASINS.items())}
+    })
+
+@app.route("/api/india/overview", methods=["GET"])
+def api_india_overview():
+    """Requirement #6: Complete nationwide India Flood Status Dashboard summary."""
+    return jsonify(LiveIndiaDataService.get_india_flood_overview())
+
+# =============================================================================
+# REST API: GEOJSON SPATIAL LAYERS FOR ALL INDIA (Requirement #7)
+# =============================================================================
+
+@app.route("/api/geojson/india-states", methods=["GET"])
+def api_geojson_india_states():
+    """Layer 1: India State Boundaries GeoJSON."""
+    return jsonify(get_india_states_geojson())
+
+@app.route("/api/geojson/india-rivers", methods=["GET"])
+def api_geojson_india_rivers():
+    """Layer 3: Major Indian River Channel LineStrings."""
+    return jsonify(get_india_rivers_geojson())
+
+@app.route("/api/geojson/historical-floods", methods=["GET"])
+def api_geojson_historical_floods():
+    """Layer 5: Historical flood disaster archive across India."""
+    state = request.args.get("state")
+    basin = request.args.get("basin")
+    features = []
+    for ev in HISTORICAL_FLOOD_EVENTS:
+        if state and state.lower() != "all" and state.lower() not in ev["state"].lower():
+            continue
+        if basin and basin.lower() != "all" and basin.lower() not in ev["river_basin"].lower():
+            continue
+        lat, lng = ev["coordinates"]
+        features.append({
+            "type": "Feature",
+            "properties": {
+                **ev,
+                "provenance": "HISTORICAL"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [lng, lat]
+            }
+        })
+    return jsonify({
+        "type": "FeatureCollection",
+        "features": features
+    })
+
+@app.route("/api/geojson/forecast-risk", methods=["GET"])
+def api_geojson_forecast_risk():
+    """Layer 12: 3-day forward precipitation and inundation hazard zones."""
+    state = request.args.get("state")
+    return jsonify(get_forecast_risk_geojson(state))
+
+# =============================================================================
+# REST API: UNIFIED LIVE INDIA FLOOD DATA SYSTEM (Requirements #3, #5, #10, #11, #17)
 # =============================================================================
 
 @app.route("/api/live-data/status", methods=["GET"])
@@ -684,64 +808,82 @@ def api_live_data_status():
 
 @app.route("/api/live-data/rainfall", methods=["GET"])
 def api_live_data_rainfall():
-    """Requirement #11 & #17: Real-time rainfall observations with provenance and units."""
+    """Requirement #11 & #17: Real-time rainfall observations across India with provenance and units."""
     region = request.args.get("region")
-    records = LiveIndiaDataService.get_live_rainfall(region)
+    state = request.args.get("state")
+    district = request.args.get("district")
+    basin = request.args.get("basin")
+    records = LiveIndiaDataService.get_live_rainfall(region=region, state=state, district=district, basin=basin)
     return jsonify({
         "status": "success",
-        "region": region or "all",
+        "region": state or basin or region or "all",
         "count": len(records),
         "data": records
     })
 
 @app.route("/api/live-data/weather", methods=["GET"])
 def api_live_data_weather():
-    """Requirement #11 & #17: Real-time atmospheric weather telemetry."""
+    """Requirement #11 & #17: Real-time atmospheric weather telemetry across India."""
     region = request.args.get("region")
-    records = LiveIndiaDataService.get_live_weather(region)
+    state = request.args.get("state")
+    district = request.args.get("district")
+    basin = request.args.get("basin")
+    records = LiveIndiaDataService.get_live_weather(region=region, state=state, district=district, basin=basin)
     return jsonify({
         "status": "success",
-        "region": region or "all",
+        "region": state or basin or region or "all",
         "count": len(records),
         "data": records
     })
 
 @app.route("/api/live-data/rivers", methods=["GET"])
 def api_live_data_rivers():
-    """Requirement #11 & #17: Real-time river stages, discharge rates, and danger levels."""
+    """Requirement #11 & #17: Real-time river stages, discharge rates, and danger levels across India."""
     region = request.args.get("region")
-    records = LiveIndiaDataService.get_live_rivers(region)
+    state = request.args.get("state")
+    district = request.args.get("district")
+    basin = request.args.get("basin")
+    records = LiveIndiaDataService.get_live_rivers(region=region, state=state, district=district, basin=basin)
     return jsonify({
         "status": "success",
-        "region": region or "all",
+        "region": state or basin or region or "all",
         "count": len(records),
         "data": records
     })
 
 @app.route("/api/live-data/flood-warnings", methods=["GET"])
 def api_live_data_flood_warnings():
-    """Requirement #11 & #17: Real-time flood risk scores and active early warnings."""
+    """Requirement #11 & #17: Real-time flood risk scores and active early warnings across India."""
     region = request.args.get("region")
-    records = LiveIndiaDataService.get_live_flood_warnings(region)
+    state = request.args.get("state")
+    district = request.args.get("district")
+    basin = request.args.get("basin")
+    records = LiveIndiaDataService.get_live_flood_warnings(region=region, state=state, district=district, basin=basin)
     return jsonify({
         "status": "success",
-        "region": region or "all",
+        "region": state or basin or region or "all",
         "count": len(records),
         "data": records
     })
 
 @app.route("/api/live-data/dashboard", methods=["GET"])
 def api_live_data_dashboard():
-    """Requirement #5: Consolidated payload for the Live Data Dashboard drawer."""
+    """Requirement #5 & #6: Consolidated payload for the Live Data Dashboard drawer."""
     region = request.args.get("region")
-    return jsonify(LiveIndiaDataService.get_live_dashboard(region))
+    state = request.args.get("state")
+    district = request.args.get("district")
+    basin = request.args.get("basin")
+    return jsonify(LiveIndiaDataService.get_live_dashboard(region=region, state=state, district=district, basin=basin))
 
 @app.route("/api/live-data/refresh", methods=["POST"])
 def api_live_data_refresh():
     """Requirement #8: Force real-time refresh bypassing TTL cache."""
     region = request.args.get("region")
-    data = LiveIndiaDataService.sync_and_cache_live_observations(region, force_refresh=True)
-    dash = LiveIndiaDataService.get_live_dashboard(region)
+    state = request.args.get("state")
+    district = request.args.get("district")
+    basin = request.args.get("basin")
+    data = LiveIndiaDataService.sync_and_cache_live_observations(region=region, force_refresh=True, state=state, district=district, basin=basin)
+    dash = LiveIndiaDataService.get_live_dashboard(region=region, state=state, district=district, basin=basin)
     return jsonify({
         "status": "success",
         "message": "Live telemetry refreshed from external APIs",

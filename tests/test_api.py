@@ -193,6 +193,129 @@ class TestFloodGuard(unittest.TestCase):
         self.assertEqual(data.get("status"), "success")
         self.assertIn("dashboard", data)
 
+    def test_india_states_endpoint(self):
+        """Verify GET /api/india/states returns 28+ states with capitals and centroids."""
+        res = self.client.get("/api/india/states")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("status"), "success")
+        self.assertGreaterEqual(data.get("count", 0), 28)
+        states = data.get("states_map") or {s["state_name"]: s for s in data.get("states", [])}
+        self.assertIn("Assam", states)
+        self.assertIn("Bihar", states)
+        self.assertIn("Odisha", states)
+        self.assertIn("Kerala", states)
+        self.assertIn("Maharashtra", states)
+        self.assertIn("capital", states["Assam"])
+        self.assertIn("center", states["Assam"])
+        self.assertIn("flood_prone_districts", states["Assam"])
+
+    def test_india_districts_endpoint(self):
+        """Verify GET /api/india/districts with and without state filter."""
+        res = self.client.get("/api/india/districts?state=Assam")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("status"), "success")
+        self.assertIn("districts", data)
+        self.assertIn("Dibrugarh", data["districts"])
+
+    def test_india_basins_endpoint(self):
+        """Verify GET /api/india/basins returns 9 major Indian river basins."""
+        res = self.client.get("/api/india/basins")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("status"), "success")
+        self.assertGreaterEqual(data.get("count", 0), 9)
+        basins = {k.lower(): v for k, v in (data.get("basins_map") or {}).items()} if data.get("basins_map") else {b["basin_key"].lower(): b for b in data.get("basins", [])}
+        for b in ["ganga", "brahmaputra", "mahanadi", "godavari", "krishna", "narmada", "tapi", "kaveri", "indus"]:
+            self.assertIn(b, basins)
+            self.assertTrue("center" in basins[b])
+
+    def test_india_overview_endpoint(self):
+        """Verify GET /api/india/overview nationwide summary and macro KPIs."""
+        res = self.client.get("/api/india/overview")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("status"), "success")
+        self.assertIn("summary", data)
+        sum_data = data["summary"]
+        self.assertGreaterEqual(sum_data.get("monitored_states_count", 0), 28)
+        self.assertGreaterEqual(sum_data.get("monitored_river_basins_count", 0), 9)
+        self.assertIn("national_peak_rainfall_24h_mm", sum_data)
+        self.assertIn("state_breakdown", data)
+        self.assertGreater(len(data["state_breakdown"]), 0)
+
+    def test_geojson_india_states(self):
+        """Verify GET /api/geojson/india-states returns polygon GeoJSON for India."""
+        res = self.client.get("/api/geojson/india-states")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("type"), "FeatureCollection")
+        self.assertGreaterEqual(len(data.get("features", [])), 28)
+
+    def test_geojson_india_rivers(self):
+        """Verify GET /api/geojson/india-rivers returns 10 major nationwide rivers."""
+        res = self.client.get("/api/geojson/india-rivers")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("type"), "FeatureCollection")
+        self.assertGreaterEqual(len(data.get("features", [])), 9)
+        river_names = [f["properties"]["river_name"] for f in data["features"]]
+        self.assertIn("Ganga River", river_names)
+        self.assertIn("Brahmaputra River", river_names)
+
+    def test_geojson_historical_floods(self):
+        """Verify GET /api/geojson/historical-floods returns archived flood perimeters."""
+        res = self.client.get("/api/geojson/historical-floods")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("type"), "FeatureCollection")
+        self.assertGreaterEqual(len(data.get("features", [])), 8)
+        for f in data["features"]:
+            self.assertEqual(f["properties"]["provenance"], "HISTORICAL")
+
+    def test_geojson_forecast_risk(self):
+        """Verify GET /api/geojson/forecast-risk returns 3-day forecast polygons."""
+        res = self.client.get("/api/geojson/forecast-risk")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("type"), "FeatureCollection")
+        self.assertGreater(len(data.get("features", [])), 0)
+        for f in data["features"]:
+            self.assertEqual(f["properties"]["provenance"], "FORECAST")
+
+    def test_nationwide_station_schema_and_filtering(self):
+        """Verify 13-field location schema and multi-dimensional filtering across states and basins."""
+        # 1. State filter
+        res_assam = self.client.get("/api/live-data/dashboard?state=Assam")
+        self.assertEqual(res_assam.status_code, 200)
+        d_assam = res_assam.get_json()
+        self.assertTrue(all(s["state"] == "Assam" for s in d_assam.get("stations", [])))
+
+        # 2. Basin filter
+        res_ganga = self.client.get("/api/live-data/dashboard?basin=ganga")
+        self.assertEqual(res_ganga.status_code, 200)
+        d_ganga = res_ganga.get_json()
+        self.assertTrue(all("Ganga" in s.get("river_basin", "") for s in d_ganga.get("stations", [])))
+
+
+        # 3. 13-field schema verification on national feed
+        res_all = self.client.get("/api/live-data/dashboard?region=all")
+        self.assertEqual(res_all.status_code, 200)
+        d_all = res_all.get_json()
+        self.assertGreaterEqual(len(d_all.get("stations", [])), 35)
+
+        required_13_fields = [
+            "data_type", "country", "state", "district", "river_basin",
+            "location_name", "latitude", "longitude", "value", "unit",
+            "source", "observation_time", "last_updated"
+        ]
+        for st in d_all["stations"]:
+            for f in required_13_fields:
+                self.assertIn(f, st, f"Station {st.get('location_name')} missing field '{f}'")
+            self.assertEqual(st["country"], "India")
+
 if __name__ == "__main__":
     unittest.main()
+
 
