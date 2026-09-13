@@ -3,40 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FloodGuard | Tactical GIS Flood Risk Mapping & Early Warning</title>
-  <meta name="description" content="GIS-based operational intelligence web application to monitor flood-prone areas, calculate spatial risk, predict flood hazards with ML, and find emergency safe locations.">
+  <title>FloodGuard | Public Flood Safety & Early Warning Portal</title>
+  <meta name="description" content="Citizen-first flood monitoring, real-time spatial risk, emergency alert broadcasts, and nearest safe evacuation shelter routing across India.">
 
   <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/responsive.css">
 
-  <!-- Leaflet CSS -->
+  <!-- Leaflet & MarkerCluster CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
 </head>
 <body class="tactical-grid-bg">
 
-  <!-- Top Telemetry Status Ribbon -->
+  <!-- Universal Emergency Bulletin Bar -->
   <div class="telemetry-ticker-bar">
     <div class="ticker-left">
       <div class="ticker-item">
         <span class="pulse-beacon"></span>
-        <span>CENTRAL COMMAND DISPATCH ONLINE</span>
+        <span>CITIZEN SAFETY RADAR: ACTIVE</span>
       </div>
-      <div class="ticker-item" style="cursor: pointer;" onclick="triggerGlobalLiveSync()" title="Click to sync live weather from Open-Meteo API">
-        <span id="ticker-live-status" style="color: #34D399; font-weight: 600; font-family: var(--font-mono); font-size: 0.72rem;">● LIVE METEO & SATELLITE: ACTIVE</span>
-      </div>
-      <div class="ticker-item mono" style="color: var(--accent-blue);">
-        <span>SYS CLOCK:</span>
-        <span id="mission-clock">2026-09-13 11:25:00 UTC</span>
+      <div class="ticker-item mono" style="color: #34D399; cursor: pointer;" onclick="triggerGlobalLiveSync()" title="Click to refresh live weather & river levels">
+        <span id="ticker-live-status">● REAL-TIME WEATHER: SYNCED</span>
       </div>
     </div>
     <div class="ticker-marquee" id="incident-ticker-text">
       <span class="ticker-tag">BULLETIN</span>
-      <strong>HIGH FLOOD WATCH IN EFFECT: CENTRAL BASIN DISTRICT</strong> — 3 ACTIVE WARNINGS ISSUED
+      <strong>MONSOON FLOOD WATCH: REAL-TIME ADVISORIES ISSUED FOR ACTIVE RIVER BASINS</strong>
     </div>
   </div>
 
-  <!-- Navigation Bar -->
+  <!-- Universal Clean Navigation Bar -->
   <nav class="navbar">
     <div class="container nav-container">
       <a href="/" class="nav-brand">
@@ -45,7 +42,7 @@
         </div>
         <div>
           <div class="brand-title">FloodGuard</div>
-          <div class="brand-subtitle">GIS Early Warning</div>
+          <div class="brand-subtitle">Public Safety Portal</div>
         </div>
       </a>
 
@@ -53,258 +50,245 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
 
+      <!-- Navigation Links -->
       <ul class="nav-links">
         <li><a href="/" class="nav-link active">Home</a></li>
-        <li><a href="/map" class="nav-link">Live Map</a></li>
-        <li><a href="/risk" class="nav-link">Flood Risk</a></li>
-        <li><a href="/prediction" class="nav-link">Prediction</a></li>
+        <li><a href="/map" class="nav-link">Live Flood Map</a></li>
+        <li><a href="/risk" class="nav-link">My Flood Risk</a></li>
         <li>
           <a href="/alerts" class="nav-link">
             Alerts
             <span id="nav-alert-counter" class="nav-alert-badge">3</span>
           </a>
         </li>
-        <li><a href="/safe-locations" class="nav-link">Safe Locations</a></li>
-        <li><a href="/history" class="nav-link">Historical Data</a></li>
-        <li><a href="/admin" class="nav-link" style="color: #93C5FD;">Admin</a></li>
+        <li><a href="/safe-locations" class="nav-link">Safe Places</a></li>
+
+        <!-- More Dropdown -->
+        <li class="nav-dropdown">
+          <a href="#" class="nav-link nav-dropdown-toggle" onclick="event.preventDefault()">
+            <span>More</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </a>
+          <div class="nav-dropdown-menu">
+            <a href="/prediction" class="nav-dropdown-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m12 6 4 6h-8l4-6z"/></svg>
+              <span>Flood Prediction</span>
+            </a>
+            <a href="/history" class="nav-dropdown-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+              <span>Historical Floods</span>
+            </a>
+            <a href="/admin" class="nav-dropdown-item admin-link">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 9h3"/><path d="M15 15h3"/></svg>
+              <span>Admin / GIS Portal</span>
+            </a>
+          </div>
+        </li>
+
+        <!-- Mode Switcher Pill -->
+        <li>
+          <button class="mode-toggle-pill" id="btn-mode-toggle" title="Switch between Public User and Admin/GIS Mode">
+            <span class="mode-pill-dot"></span>
+            <span>Switch to Admin / GIS</span>
+          </button>
+        </li>
+
+        <!-- Universal Emergency Help Button -->
+        <li>
+          <button class="btn-emergency" onclick="openEmergencyModal()">
+            <span class="emergency-pulse-dot"></span>
+            <span>EMERGENCY HELP</span>
+          </button>
+        </li>
       </ul>
     </div>
   </nav>
 
-  <!-- Hero Operations Briefing Section -->
-  <header class="hero">
-    <div class="container hero-layout">
-      <!-- Left Column: Mission Briefing -->
-      <div>
-        <div class="hero-pill">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-          <span>GEOSPATIAL EARLY WARNING PLATFORM</span>
-        </div>
-
-        <h1 class="hero-title">GIS-Based Flood Hazard Intelligence & Early Warning</h1>
-        <p class="hero-desc">
-          Continuous hydrometric monitoring across river basins, predictive risk scoring with Scikit-Learn machine learning, and terrain-guided evacuation routing to safe highland sanctuaries.
-        </p>
-
-        <div class="hero-actions">
-          <a href="/map" class="btn btn-primary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-            Launch Tactical GIS Map
-          </a>
-          <a href="/risk" class="btn btn-secondary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Compute Basin Vulnerability
-          </a>
-        </div>
+  <!-- Main Content Container -->
+  <main class="container" style="padding-top: 2rem; padding-bottom: 3.5rem;">
+    
+    <!-- Top Header -->
+    <div style="margin-bottom: 1.5rem;">
+      <div style="display: inline-flex; align-items: center; gap: 0.45rem; color: #38BDF8; font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        <span>NATIONAL FLOOD SAFETY PORTAL</span>
       </div>
-
-      <!-- Right Column: Tactical Live Telemetry Radar Widget -->
-      <div class="hero-radar-card tactical-box">
-        <div class="hero-radar-header">
-          <div>
-            <div style="font-size: 0.7rem; font-family: var(--font-mono); color: var(--accent-blue); text-transform: uppercase;">
-              CURRENT BASIN TELEMETRY
-            </div>
-            <h3 style="font-size: 1.15rem; margin-top: 0.15rem;">Central Basin District</h3>
-          </div>
-          <span class="badge badge-critical">Critical Stage</span>
-        </div>
-
-        <div class="gauge-grid">
-          <div class="gauge-item">
-            <div class="gauge-label">Periyar Stem Crest</div>
-            <div class="gauge-value" style="color: #EF4444;">9.8m</div>
-            <div class="gauge-bar-track">
-              <div style="width: 100%; height: 100%; background: #EF4444;"></div>
-            </div>
-            <span style="font-size: 0.68rem; color: var(--text-muted); margin-top: 0.3rem; display:block;">Danger Mark: 9.0m</span>
-          </div>
-
-          <div class="gauge-item">
-            <div class="gauge-label">Peak Inflow 24h</div>
-            <div class="gauge-value" style="color: #60A5FA;">178 mm</div>
-            <div class="gauge-bar-track">
-              <div style="width: 85%; height: 100%; background: #38BDF8;"></div>
-            </div>
-            <span style="font-size: 0.68rem; color: var(--text-muted); margin-top: 0.3rem; display:block;">Torrential threshold</span>
-          </div>
-
-          <div class="gauge-item">
-            <div class="gauge-label">Refuge Capacity</div>
-            <div class="gauge-value" style="color: #10B981;">5,600</div>
-            <div class="gauge-bar-track">
-              <div style="width: 25%; height: 100%; background: #10B981;"></div>
-            </div>
-            <span style="font-size: 0.68rem; color: var(--text-muted); margin-top: 0.3rem; display:block;">5 Relief Camps Open</span>
-          </div>
-
-          <div class="gauge-item">
-            <div class="gauge-label">Evacuation Status</div>
-            <div class="gauge-value" style="color: #F59E0B;">Active</div>
-            <div class="gauge-bar-track">
-              <div style="width: 65%; height: 100%; background: #F59E0B;"></div>
-            </div>
-            <span style="font-size: 0.68rem; color: var(--text-muted); margin-top: 0.3rem; display:block;">Zone B levee overflow</span>
-          </div>
-        </div>
-
-        <div style="margin-top: 1.25rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 0.85rem;">
-          <span style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-muted);">LIVE SATELLITE & SENSOR FEEDS</span>
-          <a href="/prediction" class="btn btn-sm btn-secondary" style="font-size:0.75rem;">AI Hazard Prediction →</a>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- Flood Status Section (Dense Tactical Data Cards) -->
-  <section class="container" style="margin-bottom: 3.5rem;">
-    <div class="status-grid">
-      <!-- Low Risk -->
-      <div class="kpi-card low">
-        <div class="kpi-header">
-          <span class="kpi-label">Nominal Safe</span>
-          <div class="kpi-icon-wrap" style="background: var(--risk-low-bg); color: var(--risk-low);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          </div>
-        </div>
-        <div id="kpi-low" class="kpi-val" style="color: var(--risk-low);">1 Zone</div>
-        <div class="kpi-sub">Elevation > 25m MSL safe</div>
-      </div>
-
-      <!-- Medium Risk -->
-      <div class="kpi-card medium">
-        <div class="kpi-header">
-          <span class="kpi-label">Under Monitoring</span>
-          <div class="kpi-icon-wrap" style="background: var(--risk-med-bg); color: var(--risk-med);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          </div>
-        </div>
-        <div id="kpi-med" class="kpi-val" style="color: var(--risk-med);">2 Zones</div>
-        <div class="kpi-sub">Urban drainage surveillance</div>
-      </div>
-
-      <!-- High Risk -->
-      <div class="kpi-card high">
-        <div class="kpi-header">
-          <span class="kpi-label">High Hazard</span>
-          <div class="kpi-icon-wrap" style="background: var(--risk-high-bg); color: var(--risk-high);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
-          </div>
-        </div>
-        <div id="kpi-high" class="kpi-val" style="color: #FB923C;">1 Zone</div>
-        <div class="kpi-sub">Backwater inundation risk</div>
-      </div>
-
-      <!-- Critical Active Alerts -->
-      <div class="kpi-card critical">
-        <div class="kpi-header">
-          <span class="kpi-label">Active Warnings</span>
-          <div class="kpi-icon-wrap" style="background: var(--risk-crit-bg); color: var(--risk-crit);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-          </div>
-        </div>
-        <div id="kpi-alerts" class="kpi-val" style="color: #F87171;">3 Active</div>
-        <div class="kpi-sub">1 Critical breach, 2 advisories</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Quick Map Preview Section -->
-  <section class="container" style="margin-bottom: 4.5rem;">
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.25rem;">
-      <div>
-        <h2 style="font-size: 1.75rem;">Interactive GIS Spatial Viewport</h2>
-        <p>Live boundary polygons, river courses, and relief sanctuaries across Central Basin District.</p>
-      </div>
-      <a href="/map" class="btn btn-primary btn-sm">
-        Full Screen GIS Workbench →
-      </a>
+      <h1 style="font-size: 2.5rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.02em;">
+        Flood Status in India
+      </h1>
+      <p style="font-size: 1.05rem; color: #94A3B8; max-width: 680px; margin-top: 0.35rem;">
+        Real-time citizen flood safety monitor. Check immediate flood risks in your area, follow recommended precautions, and locate the closest emergency shelter.
+      </p>
     </div>
 
-    <div class="tactical-box" style="position: relative; height: 440px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-tactical); box-shadow: var(--shadow-lg);">
-      <div id="map-preview" style="width: 100%; height: 100%;"></div>
-    </div>
-  </section>
+    <!-- Large Flood Status Card (Requirement #2) -->
+    <div class="public-status-card">
+      <div class="public-status-header">
+        <div>
+          <div style="font-size: 0.75rem; font-family: var(--font-mono); color: #94A3B8; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;">
+            CURRENT FLOOD RISK IN MONITORED BASINS
+          </div>
+          <div class="risk-indicator-huge" style="margin-top: 0.5rem;">
+            <span id="hero-risk-badge" class="risk-huge-badge" style="background: rgba(239, 68, 68, 0.18); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.5);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+              HIGH FLOOD RISK
+            </span>
+          </div>
+        </div>
 
-  <!-- How It Works Section (Geospatial Intelligence Flow) -->
-  <section class="pipeline-section">
-    <div class="container">
-      <div class="section-header">
-        <h2 class="section-title">Geospatial Intelligence Architecture</h2>
-        <p class="section-desc">
-          Automated data ingestion converting hydrometric telemetries into immediate community disaster warnings.
-        </p>
+        <div style="text-align: right;">
+          <div style="font-size: 0.72rem; font-family: var(--font-mono); color: #34D399; font-weight: 700;">
+            ● 38 STATIONS ACTIVELY INGESTING
+          </div>
+          <div style="font-size: 0.78rem; color: #94A3B8; margin-top: 0.2rem;">
+            Source: CWC, GloFAS & Open-Meteo
+          </div>
+        </div>
       </div>
 
-      <div class="pipeline-flow">
+      <!-- 3 Key Public Metrics -->
+      <div class="public-metrics-row">
+        <div class="public-metric-box">
+          <div style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; font-weight: 700;">Affected Areas</div>
+          <div id="hero-affected-areas" class="public-metric-val" style="color: #F97316;">12 Areas</div>
+          <div style="font-size: 0.75rem; color: #64748B; margin-top: 0.2rem;">Active inundation & high risk zones</div>
+        </div>
+
+        <div class="public-metric-box">
+          <div style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; font-weight: 700;">Active Alerts</div>
+          <div id="hero-active-alerts" class="public-metric-val" style="color: #EF4444;">5 Active</div>
+          <div style="font-size: 0.75rem; color: #64748B; margin-top: 0.2rem;">Critical warnings & levee alerts</div>
+        </div>
+
+        <div class="public-metric-box">
+          <div style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; font-weight: 700;">Nearest Safe Location</div>
+          <div id="hero-nearest-shelter" class="public-metric-val" style="color: #10B981; font-size: 1.4rem;">Cuttack Shelter</div>
+          <div id="hero-shelter-dist" style="font-size: 0.75rem; color: #10B981; margin-top: 0.2rem;">1.8 km away • Open with supplies</div>
+        </div>
+      </div>
+
+      <!-- Primary Large Action Buttons -->
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.5rem;">
+        <a href="/map" class="btn btn-primary" style="padding: 0.85rem 1.85rem; font-size: 1rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+          View Live Map
+        </a>
+
+        <a href="/safe-locations" class="btn btn-secondary" style="padding: 0.85rem 1.85rem; font-size: 1rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Find Safe Place
+        </a>
+
+        <button onclick="openEmergencyModal()" class="btn btn-danger" style="padding: 0.85rem 1.85rem; font-size: 1rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          Emergency Help
+        </button>
+      </div>
+    </div>
+
+    <!-- The 4-Step Citizen Safety Flow (User Request Architecture) -->
+    <section class="citizen-flow-section">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <div style="font-size: 0.75rem; font-family: var(--font-mono); color: #38BDF8; font-weight: 700; text-transform: uppercase;">EMERGENCY SAFETY WORKFLOW</div>
+          <h2 style="font-size: 1.8rem; font-weight: 800; color: #FFFFFF; margin-top: 0.25rem;">What Should You Do Now?</h2>
+        </div>
+        <p style="font-size: 0.88rem; color: #94A3B8; margin: 0;">Follow these 4 simple steps to protect yourself and your family.</p>
+      </div>
+
+      <div class="citizen-flow-grid">
         <!-- Step 1 -->
-        <div class="pipeline-step tactical-box">
-          <div class="pipeline-step-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+        <div class="citizen-flow-card">
+          <span class="flow-step-num">01</span>
+          <div>
+            <div style="width: 40px; height: 40px; border-radius: var(--radius-sm); background: rgba(56, 189, 248, 0.12); color: #38BDF8; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m12 8 4 4-4 4M8 12h8"/></svg>
+            </div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF; margin-bottom: 0.4rem;">Check Location</h3>
+            <p style="font-size: 0.85rem; color: #94A3B8; line-height: 1.5;">
+              Acquire your GPS coordinates or select your district to inspect local water levels and rainfall.
+            </p>
           </div>
-          <div class="pipeline-step-name">Spatial Data</div>
-          <p style="font-size: 0.75rem; margin-top: 0.35rem;">GeoJSON polygons & terrain DEM</p>
+          <div style="margin-top: 1.25rem;">
+            <a href="/risk" class="btn btn-sm btn-secondary" style="width: 100%; text-align: center;">Check My Location &rarr;</a>
+          </div>
         </div>
-
-        <div class="pipeline-arrow">↓</div>
 
         <!-- Step 2 -->
-        <div class="pipeline-step tactical-box">
-          <div class="pipeline-step-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        <div class="citizen-flow-card">
+          <span class="flow-step-num">02</span>
+          <div>
+            <div style="width: 40px; height: 40px; border-radius: var(--radius-sm); background: rgba(245, 158, 11, 0.12); color: #F59E0B; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+            </div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF; margin-bottom: 0.4rem;">See Flood Risk</h3>
+            <p style="font-size: 0.85rem; color: #94A3B8; line-height: 1.5;">
+              Review whether your area is categorized under Low, Moderate, High, or Critical flood danger.
+            </p>
           </div>
-          <div class="pipeline-step-name">Flood Analysis</div>
-          <p style="font-size: 0.75rem; margin-top: 0.35rem;">River gauges & rain radar</p>
+          <div style="margin-top: 1.25rem;">
+            <a href="/map" class="btn btn-sm btn-secondary" style="width: 100%; text-align: center;">View Risk Map &rarr;</a>
+          </div>
         </div>
-
-        <div class="pipeline-arrow">↓</div>
 
         <!-- Step 3 -->
-        <div class="pipeline-step tactical-box">
-          <div class="pipeline-step-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/></svg>
+        <div class="citizen-flow-card">
+          <span class="flow-step-num">03</span>
+          <div>
+            <div style="width: 40px; height: 40px; border-radius: var(--radius-sm); background: rgba(239, 68, 68, 0.12); color: #EF4444; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+            </div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF; margin-bottom: 0.4rem;">Get Alert</h3>
+            <p style="font-size: 0.85rem; color: #94A3B8; line-height: 1.5;">
+              Monitor official alerts, expected inundation timing, and danger level breaches in real-time.
+            </p>
           </div>
-          <div class="pipeline-step-name">Risk Calculation</div>
-          <p style="font-size: 0.75rem; margin-top: 0.35rem;">Multi-factor hydraulic index</p>
+          <div style="margin-top: 1.25rem;">
+            <a href="/alerts" class="btn btn-sm btn-secondary" style="width: 100%; text-align: center;">Read Alerts &rarr;</a>
+          </div>
         </div>
-
-        <div class="pipeline-arrow">↓</div>
 
         <!-- Step 4 -->
-        <div class="pipeline-step tactical-box">
-          <div class="pipeline-step-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/></svg>
+        <div class="citizen-flow-card">
+          <span class="flow-step-num">04</span>
+          <div>
+            <div style="width: 40px; height: 40px; border-radius: var(--radius-sm); background: rgba(16, 185, 129, 0.12); color: #10B981; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF; margin-bottom: 0.4rem;">Find Safe Location</h3>
+            <p style="font-size: 0.85rem; color: #94A3B8; line-height: 1.5;">
+              Identify designated shelters, schools & hospitals, and navigate safely via high-ground routes.
+            </p>
           </div>
-          <div class="pipeline-step-name">GIS Visualization</div>
-          <p style="font-size: 0.75rem; margin-top: 0.35rem;">Vector layers on Leaflet.js</p>
-        </div>
-
-        <div class="pipeline-arrow">↓</div>
-
-        <!-- Step 5 -->
-        <div class="pipeline-step tactical-box">
-          <div class="pipeline-step-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+          <div style="margin-top: 1.25rem;">
+            <a href="/safe-locations" class="btn btn-sm btn-primary" style="width: 100%; text-align: center;">Locate Shelters &rarr;</a>
           </div>
-          <div class="pipeline-step-name">Early Warning</div>
-          <p style="font-size: 0.75rem; margin-top: 0.35rem;">Automated threshold alarms</p>
-        </div>
-
-        <div class="pipeline-arrow">↓</div>
-
-        <!-- Step 6 -->
-        <div class="pipeline-step tactical-box">
-          <div class="pipeline-step-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          </div>
-          <div class="pipeline-step-name">Safe Refuge</div>
-          <p style="font-size: 0.75rem; margin-top: 0.35rem;">GPS proximity & route planner</p>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Footer -->
+    <!-- Clean Interactive Live Map Preview -->
+    <section style="margin-bottom: 3.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.25rem;">
+        <div>
+          <div style="font-size: 0.75rem; font-family: var(--font-mono); color: #38BDF8; font-weight: 700; text-transform: uppercase;">INTERACTIVE OVERVIEW</div>
+          <h2 style="font-size: 1.75rem; font-weight: 800; color: #FFFFFF; margin-top: 0.25rem;">Live Flood Map Viewport</h2>
+          <p style="color: #94A3B8; font-size: 0.9rem; margin-top: 0.2rem;">Nationwide inundation buffers, river systems, and designated relief sanctuaries.</p>
+        </div>
+        <a href="/map" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+          <span>Full Screen Live Map</span>
+          <span>&rarr;</span>
+        </a>
+      </div>
+
+      <div class="tactical-box" style="position: relative; height: 420px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: var(--shadow-lg);">
+        <div id="map-preview" style="width: 100%; height: 100%;"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Clean Public Footer -->
   <footer class="footer">
     <div class="container footer-grid">
       <div class="footer-brand">
@@ -314,50 +298,51 @@
           </div>
           <span style="font-size: 1.25rem; font-weight: 800; color: #FFFFFF;">FloodGuard</span>
         </div>
-        <p>
-          Tactical GIS-Based Flood Risk Mapping and Early Warning Platform. Delivering geospatial hazard intelligence, ML-assisted forecast probability, and community evacuation guidance.
+        <p style="color: #94A3B8; font-size: 0.85rem; margin-top: 0.75rem; line-height: 1.6;">
+          Civil protection and disaster mitigation early warning platform. Designed for citizens, emergency responders, and community coordinators during extreme hydrological events.
         </p>
       </div>
 
       <div>
-        <div class="footer-heading">Spatial Feeds</div>
+        <div class="footer-heading">Public Safety</div>
         <ul class="footer-links">
-          <li><a href="/map">Full Screen GIS Viewport</a></li>
-          <li><a href="/map">Inundation Perimeters</a></li>
-          <li><a href="/risk">Hydrological Scoring Station</a></li>
-          <li><a href="/prediction">Machine Learning Models</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <div class="footer-heading">Civil Protection</div>
-        <ul class="footer-links">
+          <li><a href="/map">Live Flood Map</a></li>
+          <li><a href="/risk">My Flood Risk</a></li>
           <li><a href="/alerts">Emergency Warning Board</a></li>
-          <li><a href="/safe-locations">Refuge Camps & Shelters</a></li>
-          <li><a href="/safe-locations">Trauma Medical Centers</a></li>
-          <li><a href="/history">Historical Flood Logs</a></li>
+          <li><a href="/safe-locations">Safe Shelters & Camps</a></li>
         </ul>
       </div>
 
       <div>
-        <div class="footer-heading">Administration</div>
+        <div class="footer-heading">Emergency Helplines</div>
         <ul class="footer-links">
-          <li><a href="/admin">Command Console</a></li>
-          <li><a href="/admin">Add Inundation Polygon</a></li>
-          <li><a href="/admin">Hydrometric Telemetry</a></li>
-          <li><a href="/admin">Broadcast Public Bulletin</a></li>
+          <li><a href="tel:1078">NDRF Hotline: 1078</a></li>
+          <li><a href="tel:1070">State Disaster (SDRF): 1070</a></li>
+          <li><a href="tel:112">National Emergency: 112</a></li>
+          <li><a href="tel:108">Ambulance Service: 108</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-heading">Specialist / GIS Mode</div>
+        <ul class="footer-links">
+          <li><a href="/prediction">ML Hazard Prediction</a></li>
+          <li><a href="/history">Historical Flood Logs</a></li>
+          <li><a href="/admin">Admin / GIS Console</a></li>
+          <li><a href="#" onclick="toggleFloodGuardMode(); return false;">Toggle Mode</a></li>
         </ul>
       </div>
     </div>
 
     <div class="container footer-bottom">
-      <div>&copy; 2026 FloodGuard Operations Center. Educational & Decision Support Prototype.</div>
-      <div>Designed with Leaflet.js, OpenStreetMap, Python Flask & Scikit-Learn.</div>
+      <div>&copy; 2026 FloodGuard Community Safety Platform. Open-Meteo & Central Hydrological Ingestion.</div>
+      <div>Powered by Leaflet.js, OpenStreetMap, Python Flask & Scikit-Learn.</div>
     </div>
   </footer>
 
   <!-- Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/main.js"></script>
   <script src="/js/map.js"></script>
@@ -365,12 +350,17 @@
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
       initFloodMap("map-preview", { preview: true });
+
       try {
         const stats = await API.getStats();
-        document.getElementById("kpi-low").textContent = `${stats.low_risk} Zone${stats.low_risk > 1 ? 's' : ''}`;
-        document.getElementById("kpi-med").textContent = `${stats.medium_risk} Zone${stats.medium_risk > 1 ? 's' : ''}`;
-        document.getElementById("kpi-high").textContent = `${stats.high_risk} Zone${stats.high_risk > 1 ? 's' : ''}`;
-        document.getElementById("kpi-alerts").textContent = `${stats.active_alerts} Active`;
+        const activeAreas = (stats.high_risk || 0) + (stats.medium_risk || 0);
+        const activeAlerts = stats.active_alerts || 3;
+
+        const elAreas = document.getElementById("hero-affected-areas");
+        if (elAreas) elAreas.textContent = `${activeAreas} Areas`;
+
+        const elAlerts = document.getElementById("hero-active-alerts");
+        if (elAlerts) elAlerts.textContent = `${activeAlerts} Active`;
       } catch (e) {
         console.log("Stats preview load error:", e);
       }

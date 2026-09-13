@@ -169,19 +169,34 @@ function initFloodMap(containerId = "map-container", options = {}) {
     attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
   }).addTo(map);
 
-  // Initialize all 12 GIS LayerGroups
-  indiaStatesLayer = L.layerGroup().addTo(map);      // Layer 1
-  districtsLayer = L.layerGroup();                   // Layer 2
-  majorRiversLayer = L.layerGroup().addTo(map);      // Layer 3
-  riverStationsLayer = L.layerGroup().addTo(map);    // Layer 4
-  historicalFloodsLayer = L.layerGroup().addTo(map); // Layer 5
-  liveAffectedLayer = L.layerGroup().addTo(map);     // Layer 6
-  riskZonesLayer = L.layerGroup().addTo(map);        // Layer 7
-  liveRainfallLayer = L.layerGroup().addTo(map);     // Layer 8
-  floodWarningsLayer = L.layerGroup().addTo(map);    // Layer 9
-  sheltersLayer = L.layerGroup().addTo(map);         // Layer 10
-  hospitalsLayer = L.layerGroup().addTo(map);        // Layer 11
-  forecastRiskLayer = L.layerGroup().addTo(map);     // Layer 12
+  // Helper to create Clustered Marker Groups to prevent marker overlap
+  function createClusterGroup(options = {}) {
+    if (typeof L.markerClusterGroup === "function") {
+      return L.markerClusterGroup({
+        showCoverageOnHover: false,
+        maxClusterRadius: 45,
+        spiderfyOnMaxZoom: true,
+        disableClusteringAtZoom: 11,
+        ...options
+      });
+    }
+    return L.layerGroup();
+  }
+
+  // Initialize all 12 GIS LayerGroups (Core citizen layers active by default)
+  indiaStatesLayer = L.layerGroup();
+  districtsLayer = L.layerGroup();
+  majorRiversLayer = L.layerGroup().addTo(map);       // Core
+  riverStationsLayer = createClusterGroup();
+  historicalFloodsLayer = L.layerGroup();
+  liveAffectedLayer = L.layerGroup().addTo(map);      // Core
+  riskZonesLayer = L.layerGroup().addTo(map);         // Core
+  liveRainfallLayer = createClusterGroup();
+  floodWarningsLayer = createClusterGroup();
+  sheltersLayer = createClusterGroup().addTo(map);    // Core
+  hospitalsLayer = createClusterGroup();
+  forecastRiskLayer = L.layerGroup();
+
 
   // Ingest Nationwide Geographical & Hydrological Data
   populateGeographicalSelectors();
@@ -1132,55 +1147,69 @@ function renderFilteredLiveLayers() {
       isHigh ? "#F97316" :
       st.risk_level === "MEDIUM" ? "#F59E0B" : "#10B981";
 
+    const isDngOrWarn = isDng || isWarn;
+    const floodWindow = isDng ? "Next 2–6 Hours" : (isWarn ? "Next 6–12 Hours" : (isHigh ? "Next 12–24 Hours" : "Nominal / Monitored"));
+
     const popupHtml = `
-      <div class="popup-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-          <span style="font-family:var(--font-mono); font-size:0.68rem; color:#38BDF8; font-weight:700;">● REAL-TIME TELEMETRY</span>
-          <span class="provenance-tag provenance-live">LIVE</span>
+      <div class="popup-card" style="padding: 1.1rem; min-width: 260px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+          <span style="font-size:0.75rem; font-weight:800; color:#94A3B8; text-transform:uppercase; letter-spacing:0.05em;">Flood Alert</span>
+          ${renderRiskBadge(st.risk_level)}
         </div>
-        <div class="popup-title">${st.location_name}</div>
-        <div style="margin-bottom: 0.5rem; display: flex; gap: 0.4rem; align-items: center;">
-          <span class="badge" style="background:${riskColor}22; color:${riskColor}; border:1px solid ${riskColor}66;">${st.risk_level} RISK</span>
-          <span class="badge badge-low">${st.state}</span>
-          ${st.river_basin ? `<span class="badge badge-low">${st.river_basin}</span>` : ""}
+
+        <div class="popup-title" style="font-size:1.15rem; font-weight:800; color:#FFFFFF; margin-bottom:0.4rem;">
+          ${st.location_name}${st.state ? ', ' + st.state : ''}
         </div>
-        <div class="popup-row">
-          <span class="popup-label">Risk Composite Score</span>
-          <span class="popup-val mono" style="color:${riskColor}; font-weight:800; font-size:1.05rem;">${st.risk_score} / 100</span>
+
+        <!-- Plain language threat status -->
+        <div style="font-size:0.82rem; color:${riskColor}; font-weight:600; margin-bottom:0.75rem; line-height:1.4;">
+          ${isDng ? '⚠️ River level breached danger mark! Inundation active.' : (isWarn ? '⚠️ River level rising rapidly towards warning stage.' : (st.rainfall_24h_mm > 60 ? 'Heavy precipitation watch in local catchment.' : 'Water stage and drainage flowing nominally.'))}
         </div>
-        <div class="popup-row">
-          <span class="popup-label">River Water Stage</span>
-          <span class="popup-val mono" style="color:${isDng ? '#EF4444' : (isWarn ? '#F59E0B' : '#10B981')}; font-weight:700;">
-            ${st.water_level} m (Danger: ${st.danger_level}m)
-          </span>
+
+        <!-- 2 Essential Citizens Metrics: Rain & River -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:0.65rem; margin-bottom:0.75rem;">
+          <div>
+            <div style="font-size:0.68rem; color:#94A3B8; text-transform:uppercase; font-weight:600;">Expected Rain</div>
+            <div style="font-size:1.1rem; font-weight:800; color:#60A5FA; font-family:var(--font-mono); margin-top:0.15rem;">${st.rainfall_24h_mm} mm</div>
+          </div>
+          <div>
+            <div style="font-size:0.68rem; color:#94A3B8; text-transform:uppercase; font-weight:600;">River Level</div>
+            <div style="font-size:1.1rem; font-weight:800; color:${isDng ? '#EF4444' : (isWarn ? '#F59E0B' : '#10B981')}; font-family:var(--font-mono); margin-top:0.15rem;">
+              ${st.water_level} m
+            </div>
+          </div>
         </div>
-        <div class="popup-row">
-          <span class="popup-label">Precipitation (Last 24h)</span>
-          <span class="popup-val mono" style="color:#60A5FA;">${st.rainfall_24h_mm} mm</span>
+
+        <!-- Possible Flood Time -->
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; margin-bottom:0.85rem; padding:0 0.2rem;">
+          <span style="color:#94A3B8;">Possible Flood Time:</span>
+          <strong style="color:#FBBF24; font-family:var(--font-mono);">${floodWindow}</strong>
         </div>
-        <div class="popup-row">
-          <span class="popup-label">Current Precipitation</span>
-          <span class="popup-val mono">${st.precipitation_mm || 0} mm/h</span>
+
+        <!-- Immediate Citizen Actions -->
+        <div style="display:flex; gap:0.45rem; margin-bottom:0.65rem;">
+          <a href="/safe-locations?origin=${encodeURIComponent(st.location_name)}" class="btn btn-sm btn-primary" style="flex:1; text-align:center; padding:0.4rem 0.2rem; font-size:0.78rem;">
+            View Safe Places
+          </a>
+          <a href="/safe-locations?target=nearest&lat=${st.latitude}&lng=${st.longitude}" class="btn btn-sm btn-secondary" style="flex:1; text-align:center; padding:0.4rem 0.2rem; font-size:0.78rem;">
+            Get Directions
+          </a>
         </div>
-        <div class="popup-row">
-          <span class="popup-label">Weather Conditions</span>
-          <span class="popup-val">${st.weather_condition || "Clear"} (${st.temperature_c}°C)</span>
-        </div>
-        <div class="popup-row">
-          <span class="popup-label">Discharge Flow</span>
-          <span class="popup-val mono">${st.discharge_flow_cumecs || 0} m³/s</span>
-        </div>
-        <div class="popup-row">
-          <span class="popup-label">Provenance / Source</span>
-          <span class="popup-val mono" style="font-size:0.68rem; color:#34D399;">LIVE (${st.source || "Open-Meteo & Hydrology"})</span>
-        </div>
-        <div class="popup-row">
-          <span class="popup-label">Observed Stamp</span>
-          <span class="popup-val mono">${st.observation_time || "Live"}</span>
-        </div>
-        <div style="margin-top: 0.85rem; display: flex; gap: 0.5rem;">
-          <a href="/risk?area=${encodeURIComponent(st.location_name)}" class="btn btn-sm btn-primary" style="flex:1; text-align:center;">Risk Analysis</a>
-          <a href="/safe-locations?origin=${encodeURIComponent(st.location_name)}" class="btn btn-sm btn-secondary" style="flex:1; text-align:center;">Evacuation</a>
+
+        <!-- Progressive Disclosure: Technical GIS & ML Details -->
+        <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 0.45rem;">
+          <button onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? 'Hide Technical Details ▴' : 'View Technical Details ▾';" style="background:transparent; border:none; color:#38BDF8; font-size:0.72rem; cursor:pointer; padding:0.15rem 0; width:100%; text-align:left; font-weight:600;">
+            View Technical Details ▾
+          </button>
+          <div class="disclosure-panel" style="font-size:0.72rem; margin-top:0.4rem;">
+            <div class="popup-row"><span class="popup-label">Risk Composite Score</span><span class="popup-val mono">${st.risk_score} / 100</span></div>
+            <div class="popup-row"><span class="popup-label">Danger Mark Threshold</span><span class="popup-val mono">${st.danger_level} m</span></div>
+            <div class="popup-row"><span class="popup-label">Discharge Volume</span><span class="popup-val mono">${st.discharge_flow_cumecs || 0} m³/s</span></div>
+            <div class="popup-row"><span class="popup-label">Current Precipitation</span><span class="popup-val mono">${st.precipitation_mm || 0} mm/h</span></div>
+            <div class="popup-row"><span class="popup-label">Weather Conditions</span><span class="popup-val">${st.weather_condition || "Clear"} (${st.temperature_c}°C)</span></div>
+            <div class="popup-row"><span class="popup-label">Telemetry Source</span><span class="popup-val mono" style="color:#34D399;">${st.source || "Open-Meteo API"}</span></div>
+            <div class="popup-row"><span class="popup-label">Coordinates</span><span class="popup-val mono">${st.latitude.toFixed(4)}°N, ${st.longitude.toFixed(4)}°E</span></div>
+          </div>
         </div>
       </div>
     `;
@@ -1323,17 +1352,31 @@ function setupLayerToggles() {
   Object.entries(toggleMap).forEach(([elemId, getLayer]) => {
     const chk = document.getElementById(elemId);
     if (chk) {
+      const layer = getLayer();
+      if (layer && map) {
+        chk.checked = map.hasLayer(layer);
+      }
       chk.addEventListener("change", (e) => {
-        const layer = getLayer();
-        if (!layer) return;
+        const lyr = getLayer();
+        if (!lyr) return;
         if (e.target.checked) {
-          if (!map.hasLayer(layer)) map.addLayer(layer);
+          if (!map.hasLayer(lyr)) map.addLayer(lyr);
         } else {
-          if (map.hasLayer(layer)) map.removeLayer(layer);
+          if (map.hasLayer(lyr)) map.removeLayer(lyr);
         }
       });
     }
   });
+
+  // Export applyModeToMap for main.js mode switcher
+  window.applyModeToMap = function(mode) {
+    const isCitizen = mode === "citizen";
+    const statusLabel = document.getElementById("map-status-mode-label");
+    if (statusLabel) {
+      statusLabel.textContent = isCitizen ? "LIVE CITIZEN SAFETY RADAR" : "ADMIN / GIS WORKBENCH ACTIVE";
+    }
+  };
+
 
   // ISRO Bhuvan Satellite Remote Sensing Overlay
   const chkBhuvan = document.getElementById("toggle-bhuvan-overlay");

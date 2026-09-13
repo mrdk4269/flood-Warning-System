@@ -36,7 +36,7 @@
     </div>
   </div>
 
-  <!-- Navigation Bar -->
+  <!-- Universal Clean Navigation Bar -->
   <nav class="navbar">
     <div class="container nav-container">
       <a href="/" class="nav-brand">
@@ -45,7 +45,7 @@
         </div>
         <div>
           <div class="brand-title">FloodGuard</div>
-          <div class="brand-subtitle">GIS Early Warning</div>
+          <div class="brand-subtitle">Public Safety Portal</div>
         </div>
       </a>
 
@@ -55,18 +55,51 @@
 
       <ul class="nav-links">
         <li><a href="/" class="nav-link">Home</a></li>
-        <li><a href="/map" class="nav-link">Live Map</a></li>
-        <li><a href="/risk" class="nav-link">Flood Risk</a></li>
-        <li><a href="/prediction" class="nav-link">Prediction</a></li>
+        <li><a href="/map" class="nav-link">Live Flood Map</a></li>
+        <li><a href="/risk" class="nav-link">My Flood Risk</a></li>
         <li>
           <a href="/alerts" class="nav-link">
             Alerts
             <span id="nav-alert-counter" class="nav-alert-badge">3</span>
           </a>
         </li>
-        <li><a href="/safe-locations" class="nav-link">Safe Locations</a></li>
-        <li><a href="/history" class="nav-link active">Historical Data</a></li>
-        <li><a href="/admin" class="nav-link" style="color: #93C5FD;">Admin</a></li>
+        <li><a href="/safe-locations" class="nav-link">Safe Places</a></li>
+
+        <!-- More Dropdown -->
+        <li class="nav-dropdown">
+          <a href="#" class="nav-link nav-dropdown-toggle active" onclick="event.preventDefault()">
+            <span>More</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </a>
+          <div class="nav-dropdown-menu">
+            <a href="/prediction" class="nav-dropdown-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m12 6 4 6h-8l4-6z"/></svg>
+              <span>Flood Prediction</span>
+            </a>
+            <a href="/history" class="nav-dropdown-item active">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+              <span>Historical Floods</span>
+            </a>
+            <a href="/admin" class="nav-dropdown-item admin-link">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 9h3"/><path d="M15 15h3"/></svg>
+              <span>Admin / GIS Portal</span>
+            </a>
+          </div>
+        </li>
+
+        <li>
+          <button class="mode-toggle-pill" id="btn-mode-toggle" title="Switch between Public User and Admin/GIS Mode">
+            <span class="mode-pill-dot"></span>
+            <span>Switch to Admin / GIS</span>
+          </button>
+        </li>
+
+        <li>
+          <button class="btn-emergency" onclick="openEmergencyModal()">
+            <span class="emergency-pulse-dot"></span>
+            <span>EMERGENCY HELP</span>
+          </button>
+        </li>
       </ul>
     </div>
   </nav>

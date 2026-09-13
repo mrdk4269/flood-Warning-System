@@ -175,3 +175,262 @@ window.triggerGlobalLiveSync = async function() {
     if (badge) badge.textContent = "● BUFFERED TELEMETRY";
   }
 };
+
+/* =============================================================================
+   PUBLIC USER INTERFACE VS ADMIN / GIS INTERFACE MODE MANAGER
+   ============================================================================= */
+
+function getFloodGuardMode() {
+  return localStorage.getItem("floodguard_mode") || "citizen";
+}
+
+function setFloodGuardMode(mode) {
+  localStorage.setItem("floodguard_mode", mode);
+  applyFloodGuardMode(mode);
+}
+
+function toggleFloodGuardMode() {
+  const current = getFloodGuardMode();
+  const next = current === "citizen" ? "admin" : "citizen";
+  setFloodGuardMode(next);
+  const msg = next === "admin" 
+    ? "🛰️ Switched to Admin & Advanced GIS Interface (Full Telemetry & Layers Active)"
+    : "👤 Switched to Public Citizen Mode (Simplified Safety View)";
+  showToast(msg, "info");
+}
+
+function applyFloodGuardMode(mode) {
+  const isCitizen = mode === "citizen";
+  document.body.classList.remove("mode-citizen", "mode-admin");
+  document.body.classList.add(isCitizen ? "mode-citizen" : "mode-admin");
+
+  // Update all mode toggle buttons
+  const toggleBtns = document.querySelectorAll(".mode-toggle-pill");
+  toggleBtns.forEach(btn => {
+    if (isCitizen) {
+      btn.innerHTML = `<span class="mode-pill-dot"></span><span>Switch to Admin / GIS</span>`;
+      btn.setAttribute("title", "Enable Advanced GIS layers, ML features, and telemetry controls");
+    } else {
+      btn.innerHTML = `<span class="mode-pill-dot"></span><span>Switch to Public User</span>`;
+      btn.setAttribute("title", "Return to simplified public emergency interface");
+    }
+  });
+
+  // If on map page, trigger map layer re-render if function exists
+  if (typeof window.applyModeToMap === "function") {
+    window.applyModeToMap(mode);
+  }
+}
+
+/* =============================================================================
+   UNIVERSAL EMERGENCY HELP MODAL
+   ============================================================================= */
+
+function ensureEmergencyModal() {
+  if (document.getElementById("emergency-modal")) return;
+
+  const modalHtml = `
+    <div id="emergency-modal" class="emergency-modal-backdrop" onclick="onEmergencyBackdropClick(event)">
+      <div class="emergency-modal-box" role="dialog" aria-modal="true" aria-labelledby="emergency-modal-title">
+        <div class="emergency-modal-header">
+          <div style="display: flex; align-items: center; gap: 0.65rem;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #EF4444; display: flex; align-items: center; justify-content: center; color: white;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+            </div>
+            <div>
+              <h3 id="emergency-modal-title" style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; margin: 0;">EMERGENCY FLOOD ASSISTANCE</h3>
+              <p style="font-size: 0.75rem; color: #FCA5A5; margin: 0;">Immediate 24/7 Disaster Safety & Relief Guidance</p>
+            </div>
+          </div>
+          <button onclick="closeEmergencyModal()" style="background: transparent; border: none; color: #94A3B8; font-size: 1.5rem; cursor: pointer; padding: 0.2rem 0.5rem;" aria-label="Close modal">&times;</button>
+        </div>
+
+        <div class="emergency-modal-body">
+          <p style="font-size: 0.85rem; color: #E2E8F0; margin-bottom: 1.15rem; line-height: 1.5;">
+            What immediate emergency action do you need? Choose an option below to get directions or notify rescue teams:
+          </p>
+
+          <!-- Action 1: Nearest Shelter -->
+          <a href="/safe-locations?action=nearest" class="emergency-action-card">
+            <div class="emergency-action-icon" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-weight: 700; font-size: 0.95rem; color: #FFFFFF;">Find Nearest Safe Shelter</div>
+              <div style="font-size: 0.78rem; color: #94A3B8; margin-top: 0.15rem;">Locate high-ground relief centers, school camps & medical centers</div>
+            </div>
+            <span style="color: #38BDF8; font-weight: 700;">&rarr;</span>
+          </a>
+
+          <!-- Action 2: View Safe Route -->
+          <a href="/safe-locations" class="emergency-action-card">
+            <div class="emergency-action-icon" style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.3);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-weight: 700; font-size: 0.95rem; color: #FFFFFF;">View Safe Evacuation Route</div>
+              <div style="font-size: 0.78rem; color: #94A3B8; margin-top: 0.15rem;">Navigate paths avoiding submerged bridges and flood-prone roads</div>
+            </div>
+            <span style="color: #38BDF8; font-weight: 700;">&rarr;</span>
+          </a>
+
+          <!-- Action 3: Live Bulletins -->
+          <a href="/alerts" class="emergency-action-card">
+            <div class="emergency-action-icon" style="background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-weight: 700; font-size: 0.95rem; color: #FFFFFF;">View Active Flood Alerts</div>
+              <div style="font-size: 0.78rem; color: #94A3B8; margin-top: 0.15rem;">Check critical warnings, levee overflows & rainfall bursts</div>
+            </div>
+            <span style="color: #38BDF8; font-weight: 700;">&rarr;</span>
+          </a>
+
+          <!-- Helplines Section -->
+          <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+            <div style="font-size: 0.72rem; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.65rem;">
+              DIRECT EMERGENCY HELPLINE NUMBERS
+            </div>
+            <div class="helpline-grid">
+              <a href="tel:1078" class="helpline-btn">
+                <span>NDRF Disaster Response</span>
+                <span class="helpline-num">1078</span>
+              </a>
+              <a href="tel:1070" class="helpline-btn">
+                <span>State Disaster Relief</span>
+                <span class="helpline-num">1070</span>
+              </a>
+              <a href="tel:112" class="helpline-btn">
+                <span>National Emergency</span>
+                <span class="helpline-num">112</span>
+              </a>
+              <a href="tel:108" class="helpline-btn">
+                <span>Ambulance & Medical</span>
+                <span class="helpline-num">108</span>
+              </a>
+              <a href="tel:1077" class="helpline-btn" style="grid-column: span 2;">
+                <span>District Flood Control Helpline</span>
+                <span class="helpline-num">1077</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+}
+
+window.openEmergencyModal = function() {
+  ensureEmergencyModal();
+  const modal = document.getElementById("emergency-modal");
+  if (modal) modal.classList.add("open");
+  playEmergencyChime();
+};
+
+window.closeEmergencyModal = function() {
+  const modal = document.getElementById("emergency-modal");
+  if (modal) modal.classList.remove("open");
+};
+
+window.onEmergencyBackdropClick = function(event) {
+  if (event.target && event.target.id === "emergency-modal") {
+    closeEmergencyModal();
+  }
+};
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeEmergencyModal();
+});
+
+/* =============================================================================
+   MOBILE BOTTOM NAVIGATION BAR
+   ============================================================================= */
+
+function ensureMobileBottomNav() {
+  if (document.querySelector(".mobile-bottom-nav")) return;
+
+  const currentPath = window.location.pathname.toLowerCase();
+  const isHome = currentPath === "/" || currentPath.endsWith("index.html");
+  const isMap = currentPath.includes("map");
+  const isAlerts = currentPath.includes("alerts");
+  const isSafe = currentPath.includes("safe-locations");
+
+  const bottomNavHtml = `
+    <nav class="mobile-bottom-nav" aria-label="Mobile Bottom Navigation">
+      <a href="/" class="mobile-bottom-nav-item ${isHome ? 'active' : ''}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Home</span>
+      </a>
+      <a href="/map" class="mobile-bottom-nav-item ${isMap ? 'active' : ''}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        <span>Live Map</span>
+      </a>
+      <a href="/alerts" class="mobile-bottom-nav-item ${isAlerts ? 'active' : ''}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+        <span>Alerts</span>
+      </a>
+      <a href="/safe-locations" class="mobile-bottom-nav-item ${isSafe ? 'active' : ''}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span>Safe Places</span>
+      </a>
+      <button onclick="openEmergencyModal()" class="mobile-bottom-nav-item emergency-nav-item" style="background:transparent; border:none; cursor:pointer;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <span>HELP</span>
+      </button>
+    </nav>
+  `;
+
+  document.body.insertAdjacentHTML("beforeend", bottomNavHtml);
+}
+
+/* =============================================================================
+   PROGRESSIVE DISCLOSURE ACCORDIONS
+   ============================================================================= */
+
+window.toggleDisclosure = function(id) {
+  const panel = document.getElementById(id);
+  const btn = document.querySelector(`[data-target="${id}"]`);
+  if (!panel) return;
+  panel.classList.toggle("open");
+  const isOpen = panel.classList.contains("open");
+  if (btn) {
+    const textEl = btn.querySelector(".disclosure-text") || btn;
+    if (isOpen) {
+      btn.setAttribute("aria-expanded", "true");
+      if (btn.dataset.textOpen) textEl.textContent = btn.dataset.textOpen;
+    } else {
+      btn.setAttribute("aria-expanded", "false");
+      if (btn.dataset.textClosed) textEl.textContent = btn.dataset.textClosed;
+    }
+  }
+};
+
+/* =============================================================================
+   INITIALIZE GLOBAL COMMON ENHANCEMENTS
+   ============================================================================= */
+
+document.addEventListener("DOMContentLoaded", () => {
+  const currentMode = getFloodGuardMode();
+  applyFloodGuardMode(currentMode);
+  ensureEmergencyModal();
+  ensureMobileBottomNav();
+
+  // Attach emergency click handlers to any .btn-emergency
+  document.querySelectorAll(".btn-emergency").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      openEmergencyModal();
+    });
+  });
+
+  // Attach mode toggle handler to any .mode-toggle-pill
+  document.querySelectorAll(".mode-toggle-pill").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      toggleFloodGuardMode();
+    });
+  });
+});
+

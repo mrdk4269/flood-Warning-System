@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emergency Warnings Dispatch | FloodGuard</title>
+  <title>Emergency Flood Alerts | FloodGuard</title>
   <meta name="description" content="Real-time emergency flood bulletins, rainfall warnings, and river water surge notifications.">
 
   <!-- CSS Stylesheets -->
@@ -12,25 +12,21 @@
 </head>
 <body class="tactical-grid-bg">
 
-  <!-- Top Telemetry Status Ribbon -->
+  <!-- Universal Emergency Bulletin Ribbon -->
   <div class="telemetry-ticker-bar">
     <div class="ticker-left">
       <div class="ticker-item">
         <span class="pulse-beacon alert"></span>
-        <span>BROADCAST DISPATCH ACTIVE</span>
-      </div>
-      <div class="ticker-item mono" style="color: var(--accent-blue);">
-        <span>SYS CLOCK:</span>
-        <span id="mission-clock">2026-09-13 11:25:00 UTC</span>
+        <span>LIVE EMERGENCY BROADCAST</span>
       </div>
     </div>
     <div class="ticker-marquee" id="incident-ticker-text">
       <span class="ticker-tag">CRITICAL</span>
-      <strong>EAST DELTA AGRICULTURAL SECTOR: LEVEE EMBANKMENT BREACH</strong> — IMMEDIATE EVACUATION ORDER
+      <strong>HIGH FLOOD WATCH IN EFFECT: RAPID RUNOFF & WATER SURGES DETECTED</strong>
     </div>
   </div>
 
-  <!-- Navigation Bar -->
+  <!-- Universal Clean Navigation Bar -->
   <nav class="navbar">
     <div class="container nav-container">
       <a href="/" class="nav-brand">
@@ -39,7 +35,7 @@
         </div>
         <div>
           <div class="brand-title">FloodGuard</div>
-          <div class="brand-subtitle">GIS Early Warning</div>
+          <div class="brand-subtitle">Public Safety Portal</div>
         </div>
       </a>
 
@@ -49,81 +45,143 @@
 
       <ul class="nav-links">
         <li><a href="/" class="nav-link">Home</a></li>
-        <li><a href="/map" class="nav-link">Live Map</a></li>
-        <li><a href="/risk" class="nav-link">Flood Risk</a></li>
-        <li><a href="/prediction" class="nav-link">Prediction</a></li>
+        <li><a href="/map" class="nav-link">Live Flood Map</a></li>
+        <li><a href="/risk" class="nav-link">My Flood Risk</a></li>
         <li>
           <a href="/alerts" class="nav-link active">
             Alerts
             <span id="nav-alert-counter" class="nav-alert-badge">3</span>
           </a>
         </li>
-        <li><a href="/safe-locations" class="nav-link">Safe Locations</a></li>
-        <li><a href="/history" class="nav-link">Historical Data</a></li>
-        <li><a href="/admin" class="nav-link" style="color: #93C5FD;">Admin</a></li>
+        <li><a href="/safe-locations" class="nav-link">Safe Places</a></li>
+
+        <!-- More Dropdown -->
+        <li class="nav-dropdown">
+          <a href="#" class="nav-link nav-dropdown-toggle" onclick="event.preventDefault()">
+            <span>More</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </a>
+          <div class="nav-dropdown-menu">
+            <a href="/prediction" class="nav-dropdown-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m12 6 4 6h-8l4-6z"/></svg>
+              <span>Flood Prediction</span>
+            </a>
+            <a href="/history" class="nav-dropdown-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+              <span>Historical Floods</span>
+            </a>
+            <a href="/admin" class="nav-dropdown-item admin-link">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 9h3"/><path d="M15 15h3"/></svg>
+              <span>Admin / GIS Portal</span>
+            </a>
+          </div>
+        </li>
+
+        <li>
+          <button class="mode-toggle-pill" id="btn-mode-toggle" title="Switch between Public User and Admin/GIS Mode">
+            <span class="mode-pill-dot"></span>
+            <span>Switch to Admin / GIS</span>
+          </button>
+        </li>
+
+        <li>
+          <button class="btn-emergency" onclick="openEmergencyModal()">
+            <span class="emergency-pulse-dot"></span>
+            <span>EMERGENCY HELP</span>
+          </button>
+        </li>
       </ul>
     </div>
   </nav>
 
   <!-- Main Content -->
-  <main class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
-    <!-- Page Header & Simulation Trigger -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+  <main class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
+    <!-- Page Header & Actions -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.75rem;">
       <div>
-        <div style="display: inline-flex; align-items: center; gap: 0.4rem; color: #EF4444; font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem;">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-          PUBLIC DISASTER BROADCAST TERMINAL
+        <div style="display: inline-flex; align-items: center; gap: 0.4rem; color: #EF4444; font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+          PUBLIC DISASTER BROADCAST
         </div>
-        <h1 style="font-size: 2.4rem;">Emergency Flood Bulletins</h1>
-        <p style="font-size: 1.05rem; max-width: 720px;">
-          Continuous event-driven monitoring of precipitation bursts, river crest surges, and levee stability across Central Basin District.
+        <h1 style="font-size: 2.2rem; font-weight: 800; color: #FFFFFF;">Emergency Flood Alerts</h1>
+        <p style="font-size: 1rem; color: #94A3B8; max-width: 680px; margin-top: 0.3rem;">
+          Real-time warnings ordered by urgency. Review critical flood threats, expected impact timing, and immediately locate safe shelter.
         </p>
       </div>
 
       <!-- Action Buttons -->
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <button id="btn-sync-live-weather" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.4rem;">
+        <button id="btn-sync-live-weather" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; padding: 0.55rem 1rem;">
           <span style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; display: inline-block;"></span>
-          Sync Live Weather (Open-Meteo)
+          Sync Live Weather
         </button>
-        <button id="btn-sim-alert" class="btn btn-secondary" style="display: flex; align-items: center; gap: 0.4rem;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <button id="btn-sim-alert" class="btn btn-secondary" style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; padding: 0.55rem 1rem;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           Simulate Spike Drill
         </button>
       </div>
     </div>
 
-    <!-- Alert Filters Bar -->
+    <!-- Clear Filter Buttons (Requirement #6) -->
     <div style="display: flex; gap: 0.5rem; margin-bottom: 1.75rem; flex-wrap: wrap;">
       <button class="btn btn-sm btn-secondary alert-filter-btn active" data-filter="ALL">All Warnings</button>
-      <button class="btn btn-sm btn-secondary alert-filter-btn" data-filter="CRITICAL">Critical Breaches</button>
-      <button class="btn btn-sm btn-secondary alert-filter-btn" data-filter="HIGH">High Hazard</button>
-      <button class="btn btn-sm btn-secondary alert-filter-btn" data-filter="MEDIUM">Monitoring Stage</button>
-      <button class="btn btn-sm btn-secondary alert-filter-btn" data-filter="LOW">Nominal Advisories</button>
+      <button class="btn btn-sm btn-secondary alert-filter-btn" data-filter="CRITICAL" style="border-color: rgba(239, 68, 68, 0.4); color: #FCA5A5;">Critical Only</button>
+      <button class="btn btn-sm btn-secondary alert-filter-btn" data-filter="HIGH" style="border-color: rgba(249, 115, 22, 0.4); color: #FDBA74;">High Risk</button>
+      <button class="btn btn-sm btn-secondary alert-filter-btn" data-filter="NEARBY" style="border-color: rgba(56, 189, 248, 0.4); color: #7DD3FC;">📍 Nearby (GPS)</button>
     </div>
 
     <!-- Alerts Container -->
     <div id="alerts-container">
-      <!-- Injected by alerts.js -->
-    </div>
-
-    <!-- System Flow Infobox (Section 15 Specification) -->
-    <div class="card tactical-box" style="margin-top: 3rem; background: rgba(10, 15, 29, 0.7); border: 1px solid var(--border-tactical);">
-      <h3 style="font-size: 1.15rem; font-family: var(--font-mono); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        EVENT-DRIVEN ALERT GENERATION ENGINE
-      </h3>
-      <p style="font-size: 0.88rem; line-height: 1.6; color: var(--text-secondary);">
-        Whenever rainfall telemetry surpasses the configured 100mm threshold, or river stages breach warning level (7.5m) / danger level (9.0m), or when the composite multi-factor risk score enters <strong>HIGH (61-80)</strong> or <strong>CRITICAL (81-100)</strong>, the background rule engine immediately commits the alert to the database, updates the GIS map polygons, and broadcasts visual and auditory cues to active browser sessions.
-      </p>
+      <!-- Dynamically Injected by alerts.js -->
     </div>
   </main>
 
-  <!-- Footer -->
+  <!-- Clean Footer -->
   <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+          <div class="brand-icon" style="width:2rem; height:2rem;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+          </div>
+          <span style="font-size: 1.25rem; font-weight: 800; color: #FFFFFF;">FloodGuard</span>
+        </div>
+        <p style="color: #94A3B8; font-size: 0.85rem; margin-top: 0.75rem; line-height: 1.6;">
+          Immediate early warning alerts based on hydraulic monitoring, river thresholds, and radar precipitation data.
+        </p>
+      </div>
+
+      <div>
+        <div class="footer-heading">Emergency Helplines</div>
+        <ul class="footer-links">
+          <li><a href="tel:1078">NDRF Hotline: 1078</a></li>
+          <li><a href="tel:1070">State Disaster Relief: 1070</a></li>
+          <li><a href="tel:112">National Emergency: 112</a></li>
+          <li><a href="tel:108">Ambulance Service: 108</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-heading">Emergency Navigation</div>
+        <ul class="footer-links">
+          <li><a href="/safe-locations">Find Nearest Safe Shelter</a></li>
+          <li><a href="/map">Interactive Flood Map</a></li>
+          <li><a href="/risk">Check My Local Risk</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-heading">Specialist Mode</div>
+        <ul class="footer-links">
+          <li><a href="/admin">Admin Command Console</a></li>
+          <li><a href="/prediction">Machine Learning Predictions</a></li>
+          <li><a href="/history">Historical Disaster Logs</a></li>
+        </ul>
+      </div>
+    </div>
+
     <div class="container footer-bottom">
-      <div>&copy; 2026 FloodGuard Operations Center. Automated Early Warning Dispatch Engine.</div>
-      <div>Designed with Leaflet.js, OpenStreetMap, Python Flask & Scikit-Learn.</div>
+      <div>&copy; 2026 FloodGuard Operations Center. Public Safety Early Warning.</div>
     </div>
   </footer>
 
