@@ -662,6 +662,12 @@ def get_live_status():
                 "type": "Earth Observation WMS Imagery",
                 "status": "OPERATIONAL",
                 "cadence": "Daily Satellite Pass"
+            },
+            {
+                "name": "ISRO Bhuvan Space GIS (NRSC)",
+                "type": "National Remote Sensing / Disaster WMS",
+                "status": "OPERATIONAL",
+                "cadence": "Indian Space Research Organisation"
             }
         ]
     })

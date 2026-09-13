@@ -94,6 +94,7 @@
         <label style="font-size: 0.7rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase;">Basemap Provider</label>
         <select id="basemap-select" class="form-select" style="padding: 0.35rem 0.6rem; font-size: 0.8rem; font-family: var(--font-mono); margin-top: 0.2rem;">
           <option value="dark" selected>Tactical Night Voyager (Dark)</option>
+          <option value="bhuvan">🛰️ ISRO Bhuvan Space GIS (India)</option>
           <option value="nasa">🛰️ NASA Earth Daily Satellite (Terra / Space)</option>
           <option value="satellite">High-Res Satellite (Esri Imagery)</option>
           <option value="streets">OpenStreetMap Standard</option>
@@ -106,7 +107,7 @@
         <input id="map-search-input" type="text" class="map-search-input" placeholder="Search zone, river, or shelter...">
       </div>
 
-      <!-- 6 GIS Layer Toggles -->
+      <!-- 7 GIS Layer Toggles -->
       <div class="layer-toggle-group">
         <label class="layer-toggle-item">
           <span><span class="layer-indicator" style="background: #EF4444;"></span>Layer 1: Flood Inundation Polygons</span>
@@ -136,6 +137,11 @@
         <label class="layer-toggle-item">
           <span><span class="layer-indicator" style="background: #0284C7;"></span>Layer 6: Weather Rain Stations</span>
           <input type="checkbox" id="toggle-rainfall" checked>
+        </label>
+
+        <label class="layer-toggle-item">
+          <span><span class="layer-indicator" style="background: #F97316;"></span>Layer 7: ISRO Bhuvan Space Remote Sensing</span>
+          <input type="checkbox" id="toggle-bhuvan-overlay">
         </label>
       </div>
     </div>

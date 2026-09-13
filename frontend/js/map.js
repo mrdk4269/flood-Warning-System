@@ -137,15 +137,34 @@ function setupBasemapSwitcher() {
 
   switcher.addEventListener("change", (e) => {
     const chosen = e.target.value;
-    if (BASEMAPS[chosen] && currentBasemap) {
+    if (currentBasemap) {
       map.removeLayer(currentBasemap);
+    }
+
+    if (chosen === "bhuvan") {
+      currentBasemap = L.tileLayer.wms("https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wms", {
+        layers: "sisdp_base:sisdp_basemap",
+        format: "image/png",
+        transparent: false,
+        version: "1.1.1",
+        srs: "EPSG:900913",
+        maxZoom: 18,
+        attribution: "Map data &copy; ISRO Bhuvan / NRSC Department of Space, India"
+      }).addTo(map);
+
+      floodAreasLayer?.bringToFront?.();
+      riversLayer?.bringToFront?.();
+
+      if (typeof showToast === "function") {
+        showToast("🛰️ ISRO Bhuvan Space GIS Basemap Activated (NRSC / Space)", "info");
+      }
+    } else if (BASEMAPS[chosen]) {
       const isNasa = chosen === "nasa";
       currentBasemap = L.tileLayer(BASEMAPS[chosen], {
         maxZoom: isNasa ? 9 : 19,
         attribution: isNasa ? 'Imagery &copy; NASA GIBS / EOSDIS' : '&copy; OpenStreetMap contributors &copy; CARTO'
       }).addTo(map);
 
-      // Bring overlay layers to front
       floodAreasLayer?.bringToFront?.();
       riversLayer?.bringToFront?.();
 
@@ -525,6 +544,33 @@ function setupLayerToggles() {
       });
     }
   });
+
+  // Layer 7: ISRO Bhuvan Space Remote Sensing Layer
+  let bhuvanDisasterLayer = null;
+  const chkBhuvan = document.getElementById("toggle-bhuvan-overlay");
+  if (chkBhuvan) {
+    bhuvanDisasterLayer = L.tileLayer.wms("https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wms", {
+      layers: "disaster:Kerala_2020_Event",
+      format: "image/png",
+      transparent: true,
+      version: "1.1.1",
+      srs: "EPSG:900913",
+      maxZoom: 18,
+      attribution: "Remote Sensing &copy; ISRO Bhuvan Disaster Services"
+    });
+
+    chkBhuvan.addEventListener("change", (e) => {
+      if (e.target.checked) {
+        map.addLayer(bhuvanDisasterLayer);
+        bhuvanDisasterLayer.bringToFront?.();
+        if (typeof showToast === "function") {
+          showToast("🛰️ ISRO Bhuvan Disaster Remote Sensing Layer Enabled", "info");
+        }
+      } else {
+        map.removeLayer(bhuvanDisasterLayer);
+      }
+    });
+  }
 }
 
 // Geolocation: Find My Location
