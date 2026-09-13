@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Live Flood Map | FloodGuard Safety Portal</title>
-  <meta name="description" content="Interactive nationwide live flood map showing real-time affected areas, river levels, flood risk zones, and safe evacuation shelters.">
+  <meta name="description" content="Clean interactive nationwide live flood map showing real-time affected areas, river levels, flood risk zones, and safe evacuation shelters.">
 
   <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="/css/style.css">
@@ -14,26 +14,9 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
 </head>
-<body class="map-page-body" style="overflow: hidden; height: 100vh;">
+<body class="map-page-body">
 
-  <!-- Telemetry Status Ribbon (Shown in Admin Mode, Subtle in Citizen Mode) -->
-  <div class="telemetry-ticker-bar">
-    <div class="ticker-left">
-      <div class="ticker-item">
-        <span class="pulse-beacon"></span>
-        <span id="map-status-mode-label">LIVE CITIZEN SAFETY RADAR</span>
-      </div>
-      <div class="ticker-item hud-telemetry-item mono" style="color: var(--accent-blue);">
-        <span id="hud-cursor-coords">LAT: 22.5000° N | LON: 80.0000° E</span>
-      </div>
-    </div>
-    <div class="ticker-marquee" id="incident-ticker-text">
-      <span class="ticker-tag">ALERT</span>
-      <strong>LIVE DISASTER MONITOR: REAL-TIME RIVER TELEMETRY & FLOOD WATCH ACTIVE</strong>
-    </div>
-  </div>
-
-  <!-- Universal Clean Navigation Bar -->
+  <!-- Universal Clean Navigation Bar (TOP: Simple navigation bar only) -->
   <nav class="navbar">
     <div class="container nav-container">
       <a href="/" class="nav-brand">
@@ -85,14 +68,6 @@
           </div>
         </li>
 
-        <!-- Mode Switcher Pill Button -->
-        <li>
-          <button class="mode-toggle-pill" id="btn-mode-toggle" title="Switch between Public User and Admin/GIS Mode">
-            <span class="mode-pill-dot"></span>
-            <span>Switch to Admin / GIS</span>
-          </button>
-        </li>
-
         <!-- Universal Emergency Help Button -->
         <li>
           <button class="btn-emergency" onclick="openEmergencyModal()">
@@ -104,259 +79,32 @@
     </div>
   </nav>
 
-  <!-- Full-Screen Interactive Map Wrapper -->
+  <!-- Full-Screen Interactive Map Application Wrapper (height: 100vh; overflow: hidden) -->
   <div class="map-page-wrapper">
+    <!-- Primary Focus: Full-Screen OpenStreetMap + Leaflet.js Map -->
     <div id="map-container"></div>
 
-    <!-- =====================================================================
-         FLOOD IMPACT TIMELINE — Citizen-First Time Filter
-         ===================================================================== -->
-    <div class="flood-timeline-bar" id="flood-timeline-bar">
-      <div class="timeline-row-top">
-        <div class="timeline-title-group">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span class="timeline-title">Flood Impact Timeline</span>
-        </div>
-
-        <div class="timeline-buttons">
-          <button class="timeline-btn active" data-period="today" onclick="setTimelineFilter('today')">Today</button>
-          <button class="timeline-btn" data-period="7days" onclick="setTimelineFilter('7days')">Last 7 Days</button>
-          <button class="timeline-btn" data-period="30days" onclick="setTimelineFilter('30days')">Last 30 Days</button>
-        </div>
-
-        <div id="timeline-loading" class="timeline-loading" style="display: none;">
-          <span class="timeline-spinner"></span>
-          <span>Updating...</span>
-        </div>
-      </div>
-
-      <!-- Summary Stats Row -->
-      <div class="timeline-summary" id="timeline-summary">
-        <div class="timeline-stat">
-          <span class="timeline-stat-value" id="tl-total-areas">0</span>
-          <span class="timeline-stat-label">Affected Areas</span>
-        </div>
-        <div class="timeline-stat">
-          <span class="timeline-stat-value tl-high" id="tl-high-risk">0</span>
-          <span class="timeline-stat-label">High Risk</span>
-        </div>
-        <div class="timeline-stat">
-          <span class="timeline-stat-value tl-critical" id="tl-critical-risk">0</span>
-          <span class="timeline-stat-label">Critical</span>
-        </div>
-        <div class="timeline-stat">
-          <span class="timeline-stat-value tl-alerts" id="tl-active-alerts">0</span>
-          <span class="timeline-stat-label">Active Alerts</span>
-        </div>
-        <div class="timeline-stat timeline-stat-period">
-          <span class="timeline-stat-value tl-period" id="tl-period-label">Today</span>
-          <span class="timeline-stat-label">Time Period</span>
-        </div>
-      </div>
-
-      <!-- No Flood Data Alert Notice (Requirement #9) -->
-      <div id="timeline-empty-notice" class="timeline-empty-notice" style="display: none;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <span>No verified flood-effect areas found for the selected period.</span>
-      </div>
-    </div>
-
-    <!-- Risk Color Legend (Map Overlay) -->
-    <div class="timeline-legend" id="timeline-legend">
-      <span class="timeline-legend-title">Risk Legend</span>
-      <span class="legend-chip"><span class="legend-dot" style="background: #10B981;"></span>Low</span>
-      <span class="legend-chip"><span class="legend-dot" style="background: #EAB308;"></span>Moderate</span>
-      <span class="legend-chip"><span class="legend-dot" style="background: #EA580C;"></span>High</span>
-      <span class="legend-chip"><span class="legend-dot" style="background: #DC2626;"></span>Critical</span>
-    </div>
-
-    <!-- Admin-Only GIS Mode Top Bar (Requirements #1, #2, #4, #8) -->
-    <div class="map-mode-control-bar admin-only-feature">
-      <div class="mode-toggle-group">
-        <button id="btn-mode-historical" class="mode-btn" onclick="setMapMode('HISTORICAL')" title="View Archived & Historical Flood Disasters">
-          <span>🏛️ Historical Archive</span>
-        </button>
-        <button id="btn-mode-live" class="mode-btn active-live" onclick="setMapMode('LIVE')" title="View Verified Live Telemetry">
-          <span class="live-dot-pulse"></span>
-          <span>🟢 Live India Data</span>
-        </button>
-      </div>
-
-      <div class="mode-divider"></div>
-
-      <div class="mode-section" title="Country: India">
-        <span class="hud-tag">COUNTRY:</span>
-        <select id="country-selector" class="select-mini" disabled>
-          <option value="India" selected>🇮🇳 India</option>
-        </select>
-      </div>
-
-      <div class="mode-section">
-        <span class="hud-tag">BASIN:</span>
-        <select id="basin-selector" class="select-mini" onchange="onBasinSelectChange(this.value)">
-          <option value="all" selected>All River Basins</option>
-        </select>
-      </div>
-
-      <div class="mode-divider"></div>
-
-      <div class="mode-section">
-        <span class="hud-tag">AUTO-REFRESH:</span>
-        <select id="auto-refresh-selector" class="select-mini" onchange="onAutoRefreshChange(this.value)">
-          <option value="0">Manual</option>
-          <option value="60">1 Min</option>
-          <option value="300" selected>5 Mins</option>
-          <option value="900">15 Mins</option>
-        </select>
-        <button class="btn btn-sm btn-primary" onclick="forceSyncLiveData()" title="Sync real-time data now" style="padding: 0.15rem 0.45rem; font-size: 0.68rem;">
-          ⚡ SYNC
-        </button>
-        <span id="refresh-timer-display" class="refresh-timer-val">05:00</span>
-      </div>
-
-      <div class="mode-divider"></div>
-
-      <button id="btn-toggle-drawer" class="btn btn-sm btn-secondary" onclick="toggleLiveDashboardDrawer()" style="padding: 0.2rem 0.6rem; font-size: 0.72rem; display: flex; align-items: center; gap: 0.35rem;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 9h3"/><path d="M15 15h3"/></svg>
-        <span>TELEMETRY DRAWER</span>
-      </button>
-    </div>
-
-    <!-- Dynamic Location Status Ribbon (Admin Mode) -->
-    <div class="admin-only-feature" style="position: absolute; top: 4.2rem; left: 1.25rem; z-index: 999;">
-      <div class="location-status-ribbon">
-        <span style="color:#94A3B8; font-weight:700;">LOCATION:</span>
-        <span class="active-loc" id="loc-country">INDIA</span>
-        <span>›</span>
-        <span class="active-loc" id="loc-state">ALL STATES</span>
-        <span>›</span>
-        <span class="active-loc" id="loc-district">ALL DISTRICTS</span>
-        <span>›</span>
-        <span class="active-loc" id="loc-basin">ALL BASINS</span>
-      </div>
-    </div>
-
-    <!-- Live Data Dashboard Drawer (Collapsible) -->
-    <div id="live-dashboard-drawer" class="live-dashboard-drawer">
-      <div class="drawer-header">
-        <div class="drawer-title-group">
-          <div class="drawer-title">
-            <span class="live-dot-pulse"></span>
-            <span id="drawer-region-name">TOTAL INDIA FLOOD STATUS</span>
-          </div>
-          <div class="drawer-subtitle" id="drawer-last-updated">Updating nationwide telemetry...</div>
-        </div>
-        <button class="drawer-close-btn" onclick="toggleLiveDashboardDrawer()" title="Close Drawer">&times;</button>
-      </div>
-
-      <div class="drawer-content">
-        <!-- Subsystems Operational Status -->
-        <div class="subsystems-status-card">
-          <div style="font-size: 0.68rem; font-weight: 800; color: #FFFFFF; text-transform: uppercase; margin-bottom: 0.4rem; display: flex; justify-content: space-between;">
-            <span>LIVE DATA SUBSYSTEMS</span>
-            <span id="status-overall-badge" style="color: #34D399;">● OPERATIONAL</span>
-          </div>
-          <div class="subsystem-item">
-            <span style="color: var(--text-muted);">Rainfall (Open-Meteo/IMD):</span>
-            <span id="status-rainfall-val" class="status-badge-avail">● Available</span>
-          </div>
-          <div class="subsystem-item">
-            <span style="color: var(--text-muted);">Weather Conditions:</span>
-            <span id="status-weather-val" class="status-badge-avail">● Available</span>
-          </div>
-          <div class="subsystem-item">
-            <span style="color: var(--text-muted);">River Level (CWC/GloFAS):</span>
-            <span id="status-river-val" class="status-badge-avail">● Available</span>
-          </div>
-          <div class="subsystem-item">
-            <span style="color: var(--text-muted);">Flood Warning Engine:</span>
-            <span id="status-warning-val" class="status-badge-avail">● Available</span>
-          </div>
-          <div class="subsystem-item">
-            <span style="color: var(--text-muted);">Satellite Imagery:</span>
-            <span id="status-satellite-val" class="status-badge-avail">● Available (NASA/ISRO)</span>
-          </div>
-        </div>
-
-        <!-- India Macro Overview KPIs -->
-        <div class="india-kpi-macro-grid">
-          <div class="metric-cell">
-            <div class="metric-label">Monitored States</div>
-            <div id="drawer-monitored-states" class="metric-value" style="color: #38BDF8;">28+ States</div>
-          </div>
-          <div class="metric-cell">
-            <div class="metric-label">Active Flood Areas</div>
-            <div id="drawer-active-areas" class="metric-value" style="color: #F59E0B;">--</div>
-          </div>
-          <div class="metric-cell">
-            <div class="metric-label">Critical River Gauges</div>
-            <div id="drawer-critical-gauges" class="metric-value" style="color: #EF4444;">--</div>
-          </div>
-          <div class="metric-cell">
-            <div class="metric-label">Active Warnings</div>
-            <div id="drawer-active-warnings" class="metric-value" style="color: #F87171;">--</div>
-          </div>
-          <div class="metric-cell">
-            <div class="metric-label">Heavy Downpour (24h)</div>
-            <div id="drawer-peak-rain" class="metric-value" style="color: #60A5FA;">-- mm</div>
-          </div>
-          <div class="metric-cell">
-            <div class="metric-label">Monitored Basins</div>
-            <div id="drawer-monitored-basins" class="metric-value" style="color: #34D399;">9 Basins</div>
-          </div>
-        </div>
-
-        <!-- State-by-State Flood Risk Summary -->
-        <div>
-          <div style="font-size: 0.72rem; font-weight: 800; color: #FFFFFF; text-transform: uppercase; margin-bottom: 0.45rem; display: flex; justify-content: space-between;">
-            <span>STATE-LEVEL VULNERABILITY WATCH</span>
-            <span class="provenance-tag provenance-live">NATIONAL</span>
-          </div>
-          <div id="drawer-state-breakdown" style="display: flex; flex-direction: column; gap: 0.35rem; max-height: 160px; overflow-y: auto;">
-          </div>
-        </div>
-
-        <!-- Monitored Stations Telemetry List -->
-        <div>
-          <div style="font-size: 0.72rem; font-weight: 800; color: #FFFFFF; text-transform: uppercase; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
-            <span>STATION TELEMETRY FEED</span>
-            <span class="provenance-tag provenance-live">LIVE VERIFIED</span>
-          </div>
-          <div id="drawer-station-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Data Provenance Key (Admin Mode Only) -->
-    <div class="dual-map-legend tactical-box admin-only-feature">
-      <div class="legend-header">
-        <span>DATA PROVENANCE KEY</span>
-      </div>
-      <div class="legend-row">
-        <span class="provenance-tag provenance-live">LIVE</span>
-        <span>Real-Time Ingestion</span>
-      </div>
-      <div class="legend-row">
-        <span class="provenance-tag provenance-historical">HIST</span>
-        <span>Archived Past Inundation</span>
-      </div>
-      <div class="legend-row">
-        <span class="provenance-tag provenance-forecast">FCST</span>
-        <span>Meteorological Model</span>
-      </div>
-      <div class="legend-row">
-        <span class="provenance-tag provenance-sample">DEMO</span>
-        <span>Offline Reference Data</span>
-      </div>
-    </div>
-
     <!-- =========================================================================
-         SIMPLIFIED CITIZEN MAP CONTROLS PANEL (LEFT SIDE)
+         LEFT: Collapsible Map Controls Button & Sliding Sidebar
          ========================================================================= -->
-    <div class="simple-map-controls">
+    <button id="btn-toggle-layers" class="floating-control-btn left-floating-btn" onclick="toggleLayersPanel()" title="Open Layers and Filters">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span>Layers &amp; Filters</span>
+    </button>
+
+    <!-- Collapsible Sidebar (Hidden/collapsed by default for unobstructed map view) -->
+    <div class="simple-map-controls collapsed" id="layers-panel">
+      <!-- Sidebar Header with Close Button -->
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          <span>Layers &amp; Filters</span>
+        </div>
+        <button class="panel-close-btn" onclick="toggleLayersPanel()" title="Close sidebar">&times;</button>
+      </div>
+
       <!-- Location Search Input with Live Autocomplete Suggestions -->
-      <div class="map-search-wrapper" style="margin-bottom: 0.25rem;">
+      <div class="map-search-wrapper">
         <div class="map-search-bar">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input id="map-search-input" type="text" class="map-search-input" placeholder="Search City, District, River, Shelter..." autocomplete="off">
@@ -364,32 +112,32 @@
         <div id="search-suggestions" class="search-suggestions-box"></div>
       </div>
 
-      <!-- Quick Regional Filters & GPS -->
+      <!-- State & District Filters -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;">
-        <select id="state-selector" class="select-mini" onchange="onStateSelectChange(this.value)" style="width: 100%; padding: 0.35rem 0.5rem;">
+        <select id="state-selector" class="select-mini" onchange="onStateSelectChange(this.value)" style="width: 100%;">
           <option value="all" selected>All States</option>
         </select>
-        <select id="district-selector" class="select-mini" onchange="onDistrictSelectChange(this.value)" style="width: 100%; padding: 0.35rem 0.5rem;">
+        <select id="district-selector" class="select-mini" onchange="onDistrictSelectChange(this.value)" style="width: 100%;">
           <option value="all" selected>All Districts</option>
         </select>
       </div>
 
-      <!-- Action Buttons Row -->
+      <!-- Quick Action Buttons Row -->
       <div style="display: flex; gap: 0.4rem;">
-        <button class="btn btn-sm btn-primary" onclick="locateUser()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.35rem; font-size: 0.75rem; padding: 0.35rem;">
+        <button class="btn btn-sm btn-primary" onclick="locateUser()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.35rem; font-size: 0.75rem; padding: 0.4rem;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m12 8 4 4-4 4M8 12h8"/></svg>
           <span>Locate Me (GPS)</span>
         </button>
-        <button class="btn btn-sm btn-secondary" onclick="forceSyncLiveData()" title="Refresh live weather & river data" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+        <button class="btn btn-sm btn-secondary" onclick="forceSyncLiveData()" title="Refresh live weather & river data" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; padding: 0.4rem 0.65rem;">
           <span style="width: 7px; height: 7px; background: #10B981; border-radius: 50%;"></span>
           <span>Sync</span>
         </button>
       </div>
 
-      <!-- 4 Core Citizen Layers (ON by default) -->
-      <div style="margin-top: 0.35rem;">
+      <!-- 4 Core Map Layers Toggles (ON by default) -->
+      <div>
         <div style="font-size: 0.68rem; font-family: var(--font-mono); font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem;">
-          MAP LAYERS
+          CORE MAP LAYERS
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 0.35rem;">
@@ -427,10 +175,10 @@
         </div>
       </div>
 
-      <!-- Progressive Disclosure: Advanced GIS Layers Accordion (OFF by default) -->
+      <!-- Advanced Options Accordion (OFF / Collapsed by default) -->
       <div style="margin-top: 0.2rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 0.5rem;">
-        <button class="disclosure-toggle" data-target="panel-advanced-layers" data-text-open="Hide Advanced Layers ▴" data-text-closed="Advanced Layers ▸" onclick="toggleDisclosure('panel-advanced-layers')" style="width: 100%; justify-content: center;">
-          <span class="disclosure-text">Advanced Layers ▸</span>
+        <button class="disclosure-toggle" data-target="panel-advanced-layers" data-text-open="Hide Advanced Options ▴" data-text-closed="Advanced Options ▸" onclick="toggleDisclosure('panel-advanced-layers')" style="width: 100%; justify-content: center;">
+          <span class="disclosure-text">Advanced Options ▸</span>
         </button>
 
         <div id="panel-advanced-layers" class="disclosure-panel">
@@ -496,40 +244,193 @@
       </div>
     </div>
 
-    <!-- Telemetry Ribbon (Admin Mode Only) -->
-    <div class="map-telemetry-hud tactical-box admin-only-feature">
-      <div class="telemetry-item">
-        <span style="color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase;">National River Peak:</span>
-        <span class="telemetry-value" id="ribbon-river-peak" style="color: #EF4444;">--</span>
+    <!-- =========================================================================
+         TOP CENTER: Compact Flood History Filter [ Today ] [ 7 Days ] [ 30 Days ]
+         ========================================================================= -->
+    <div class="compact-timeline-bar" id="compact-timeline-bar">
+      <span class="compact-timeline-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Flood History:</span>
+      </span>
+
+      <div class="timeline-btn-group">
+        <button class="timeline-btn timeline-pill-btn active" data-period="today" onclick="setTimelineFilter('today')">Today</button>
+        <button class="timeline-btn timeline-pill-btn" data-period="7days" onclick="setTimelineFilter('7days')">7 Days</button>
+        <button class="timeline-btn timeline-pill-btn" data-period="30days" onclick="setTimelineFilter('30days')">30 Days</button>
       </div>
 
-      <div class="telemetry-item">
-        <span style="color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase;">Peak Downpour:</span>
-        <span class="telemetry-value" id="ribbon-downpour" style="color: #60A5FA;">-- mm / 24h</span>
-      </div>
+      <button class="btn-view-summary" id="btn-view-summary" onclick="toggleTimelineSummaryModal()" title="View Flood Summary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        <span>View Flood Summary</span>
+      </button>
 
-      <div class="telemetry-item">
-        <span style="color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase;">Active Network:</span>
-        <span class="telemetry-value" id="ribbon-network" style="color: #10B981;">38 Monitored Stations</span>
+      <div id="timeline-loading" class="timeline-loading" style="display: none;">
+        <span class="timeline-spinner"></span>
       </div>
-
-      <div class="telemetry-item">
-        <a href="/alerts" id="ribbon-alerts-btn" class="btn btn-sm btn-danger" style="padding: 0.3rem 0.75rem;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-          Active Warnings (0)
-        </a>
-      </div>
-  </div>
-
-  <!-- Mobile Bottom Sheet for Location & Marker Details (Requirement #17) -->
-  <div id="mobile-sheet" class="mobile-map-sheet">
-    <div class="mobile-map-sheet-handle"></div>
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem;">
-      <div id="mobile-sheet-title" style="font-size: 1.1rem; font-weight: 800; color: #FFFFFF;">Location Details</div>
-      <button onclick="closeMobileSheet()" style="background: none; border: none; color: #94A3B8; font-size: 1.5rem; line-height: 1; cursor: pointer; padding: 0 0.4rem;" aria-label="Close sheet">&times;</button>
     </div>
-    <div id="mobile-sheet-body"></div>
-  </div>
+
+    <!-- Compact Flood Impact Summary Modal / Popover (Only visible on click) -->
+    <div id="timeline-summary-popover" class="timeline-summary-popover">
+      <div class="summary-popover-header">
+        <div style="font-weight: 700; font-size: 0.85rem; color: #FFFFFF; display: flex; align-items: center; gap: 0.45rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+          <span>Flood Impact Summary</span>
+        </div>
+        <button class="summary-close-btn" onclick="toggleTimelineSummaryModal()" title="Close summary">&times;</button>
+      </div>
+
+      <div class="timeline-summary" id="timeline-summary">
+        <div class="timeline-stat">
+          <span class="timeline-stat-value" id="tl-total-areas">0</span>
+          <span class="timeline-stat-label">Affected Areas</span>
+        </div>
+        <div class="timeline-stat">
+          <span class="timeline-stat-value tl-high" id="tl-high-risk">0</span>
+          <span class="timeline-stat-label">High Risk</span>
+        </div>
+        <div class="timeline-stat">
+          <span class="timeline-stat-value tl-critical" id="tl-critical-risk">0</span>
+          <span class="timeline-stat-label">Critical</span>
+        </div>
+        <div class="timeline-stat">
+          <span class="timeline-stat-value tl-alerts" id="tl-active-alerts">0</span>
+          <span class="timeline-stat-label">Active Alerts</span>
+        </div>
+        <div class="timeline-stat timeline-stat-period">
+          <span class="timeline-stat-value tl-period" id="tl-period-label">Today</span>
+          <span class="timeline-stat-label">Time Period</span>
+        </div>
+      </div>
+
+      <div id="timeline-empty-notice" class="timeline-empty-notice" style="display: none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>No verified flood-effect areas found for this period.</span>
+      </div>
+    </div>
+
+    <!-- =========================================================================
+         TOP RIGHT: Floating Button & Slide-over Drawer for Total India Flood Status
+         ========================================================================= -->
+    <button id="btn-open-status" class="floating-control-btn right-floating-btn" onclick="toggleLiveDashboardDrawer()" title="View Total India Flood Status">
+      <span class="live-dot-pulse"></span>
+      <span>India Flood Status</span>
+    </button>
+
+    <!-- Slide-over Drawer (Collapsed by default, opens cleanly when requested) -->
+    <div id="live-dashboard-drawer" class="live-dashboard-drawer collapsed">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <div class="drawer-title">
+            <span class="live-dot-pulse"></span>
+            <span id="drawer-region-name">TOTAL INDIA FLOOD STATUS</span>
+          </div>
+          <div class="drawer-subtitle" id="drawer-last-updated">Updating nationwide telemetry...</div>
+        </div>
+        <button class="drawer-close-btn" onclick="toggleLiveDashboardDrawer()" title="Close Drawer">&times;</button>
+      </div>
+
+      <div class="drawer-content">
+        <!-- 6 Core Macro Overview KPIs -->
+        <div class="india-kpi-macro-grid">
+          <div class="metric-cell">
+            <div class="metric-label">Active Flood Areas</div>
+            <div id="drawer-active-areas" class="metric-value" style="color: #F59E0B;">--</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-label">Active Alerts</div>
+            <div id="drawer-active-warnings" class="metric-value" style="color: #F87171;">--</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-label">High Risk Areas</div>
+            <div id="drawer-high-risk" class="metric-value" style="color: #FB923C;">--</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-label">Critical Areas</div>
+            <div id="drawer-critical-areas" class="metric-value" style="color: #EF4444;">--</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-label">Heavy Rainfall</div>
+            <div id="drawer-peak-rain" class="metric-value" style="color: #60A5FA;">-- mm</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-label">Monitored States</div>
+            <div id="drawer-monitored-states" class="metric-value" style="color: #38BDF8;">28+ States</div>
+          </div>
+        </div>
+
+        <!-- Subsystems Operational Status -->
+        <div class="subsystems-status-card" style="margin-top: 0.75rem;">
+          <div style="font-size: 0.68rem; font-weight: 800; color: #FFFFFF; text-transform: uppercase; margin-bottom: 0.4rem; display: flex; justify-content: space-between;">
+            <span>LIVE DATA SUBSYSTEMS</span>
+            <span id="status-overall-badge" style="color: #34D399;">● OPERATIONAL</span>
+          </div>
+          <div class="subsystem-item">
+            <span style="color: var(--text-muted);">Rainfall (Open-Meteo/IMD):</span>
+            <span id="status-rainfall-val" class="status-badge-avail">● Available</span>
+          </div>
+          <div class="subsystem-item">
+            <span style="color: var(--text-muted);">Weather Conditions:</span>
+            <span id="status-weather-val" class="status-badge-avail">● Available</span>
+          </div>
+          <div class="subsystem-item">
+            <span style="color: var(--text-muted);">River Level (CWC/GloFAS):</span>
+            <span id="status-river-val" class="status-badge-avail">● Available</span>
+          </div>
+          <div class="subsystem-item">
+            <span style="color: var(--text-muted);">Flood Warning Engine:</span>
+            <span id="status-warning-val" class="status-badge-avail">● Available</span>
+          </div>
+          <div class="subsystem-item">
+            <span style="color: var(--text-muted);">Satellite Imagery:</span>
+            <span id="status-satellite-val" class="status-badge-avail">● Available (NASA/ISRO)</span>
+          </div>
+        </div>
+
+        <!-- State-by-State Flood Risk Summary -->
+        <div style="margin-top: 0.75rem;">
+          <div style="font-size: 0.72rem; font-weight: 800; color: #FFFFFF; text-transform: uppercase; margin-bottom: 0.45rem; display: flex; justify-content: space-between;">
+            <span>STATE-LEVEL VULNERABILITY WATCH</span>
+            <span class="provenance-tag provenance-live">NATIONAL</span>
+          </div>
+          <div id="drawer-state-breakdown" style="display: flex; flex-direction: column; gap: 0.35rem; max-height: 160px; overflow-y: auto;">
+          </div>
+        </div>
+
+        <!-- Monitored Stations Telemetry List -->
+        <div style="margin-top: 0.75rem;">
+          <div style="font-size: 0.72rem; font-weight: 800; color: #FFFFFF; text-transform: uppercase; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>STATION TELEMETRY FEED</span>
+            <span class="provenance-tag provenance-live">LIVE VERIFIED</span>
+          </div>
+          <div id="drawer-station-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================================================
+         BOTTOM-RIGHT: Small Compact Leaflet Risk Legend
+         ========================================================================= -->
+    <div class="compact-risk-legend" id="map-risk-legend">
+      <div class="risk-legend-header">Risk Level</div>
+      <div class="risk-legend-chips">
+        <span class="risk-legend-chip"><span class="legend-dot" style="background: #10B981;"></span>Low</span>
+        <span class="risk-legend-chip"><span class="legend-dot" style="background: #EAB308;"></span>Moderate</span>
+        <span class="risk-legend-chip"><span class="legend-dot" style="background: #EA580C;"></span>High</span>
+        <span class="risk-legend-chip"><span class="legend-dot" style="background: #DC2626;"></span>Critical</span>
+      </div>
+    </div>
+
+    <!-- Mobile Bottom Sheet for Location & Marker Details -->
+    <div id="mobile-sheet" class="mobile-map-sheet">
+      <div class="mobile-map-sheet-handle"></div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem;">
+        <div id="mobile-sheet-title" style="font-size: 1.1rem; font-weight: 800; color: #FFFFFF;">Location Details</div>
+        <button onclick="closeMobileSheet()" style="background: none; border: none; color: #94A3B8; font-size: 1.5rem; line-height: 1; cursor: pointer; padding: 0 0.4rem;" aria-label="Close sheet">&times;</button>
+      </div>
+      <div id="mobile-sheet-body"></div>
+    </div>
+  </div> <!-- Correctly closed map-page-wrapper -->
 
   <!-- Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

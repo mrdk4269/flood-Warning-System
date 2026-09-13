@@ -198,7 +198,13 @@
     left: 0.75rem;
     right: 0.75rem;
     top: 0.75rem;
-    max-height: 48vh;
+    max-height: calc(100vh - 4.5rem);
+  }
+
+  .simple-map-controls.collapsed {
+    transform: translateY(calc(-100% - 2rem));
+    opacity: 0;
+    pointer-events: none;
   }
 
   .helpline-grid {

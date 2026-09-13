@@ -672,18 +672,33 @@ a:hover {
    MAP EMBED & HUD (FULL SCREEN & EMBEDDED)
    ============================================================================= */
 
-.map-page-wrapper {
+body.map-page-body {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  height: calc(100vh - 4.25rem - 28px);
+}
+
+.map-page-wrapper {
   position: relative;
+  width: 100vw;
+  max-width: 100%;
+  height: calc(100vh - 65px);
+  max-height: calc(100vh - 65px);
+  overflow: hidden;
+  flex: 1;
 }
 
 #map-container {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  z-index: 10;
+  z-index: 1;
   background-color: #070B14;
 }
 
@@ -2165,25 +2180,70 @@ body.mode-admin .citizen-only-hint {
   margin-top: 0.25rem;
 }
 
-/* Simplified Map Layer Control Panel */
+/* Simplified Map Layer Control Panel (Collapsible Sidebar) */
 .simple-map-controls {
   position: absolute;
   top: 1rem;
   left: 1rem;
   z-index: 1000;
   width: 320px;
-  max-height: calc(100vh - 5rem);
-  background: rgba(14, 22, 40, 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-md);
+  max-height: calc(100vh - 6.5rem);
+  background: rgba(10, 18, 35, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: var(--radius-md, 12px);
   padding: 1rem;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   overflow-y: auto;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.simple-map-controls.collapsed {
+  transform: translateX(calc(-100% - 2rem));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panel-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.panel-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.panel-close-btn:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .core-layer-item {
@@ -2389,88 +2449,138 @@ body.mode-admin .citizen-only-hint {
    FLOOD IMPACT TIMELINE — Time Period Filter Bar
    ============================================================================= */
 
-.flood-timeline-bar {
+/* =============================================================================
+   FLOOD IMPACT TIMELINE & FLOATING MAP OVERLAYS
+   ============================================================================= */
+
+/* Floating Control Buttons (Left & Right) */
+.floating-control-btn {
   position: absolute;
-  top: 0.65rem;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  background: rgba(10, 18, 35, 0.90);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 9999px;
+  color: #E2E8F0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.floating-control-btn:hover {
+  background: rgba(14, 25, 48, 0.96);
+  border-color: rgba(56, 189, 248, 0.65);
+  color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.25);
+}
+
+.left-floating-btn {
+  top: 1rem;
+  left: 1rem;
+}
+
+.right-floating-btn {
+  top: 1rem;
+  right: 1rem;
+}
+
+/* Compact Top Center Flood Impact Timeline Control */
+.compact-timeline-bar {
+  position: absolute;
+  top: 1rem;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1100;
-  background: rgba(10, 18, 35, 0.94);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  border-radius: var(--radius-md, 12px);
-  padding: 0.65rem 1rem;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  min-width: 480px;
-  max-width: 700px;
-}
-
-.timeline-row-top {
+  z-index: 500;
+  background: rgba(10, 18, 35, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 9999px;
+  padding: 0.35rem 0.65rem 0.35rem 0.85rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  flex-wrap: wrap;
+  gap: 0.65rem;
+  user-select: none;
+  transition: all 0.25s ease;
 }
 
-.timeline-title-group {
+.compact-timeline-label {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  flex-shrink: 0;
-}
-
-.timeline-title {
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: #E2E8F0;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #94A3B8;
   font-family: var(--font-mono, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
-/* Three Period Buttons */
-.timeline-buttons {
+.timeline-btn-group {
   display: flex;
-  gap: 0;
-  border-radius: 8px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 9999px;
   overflow: hidden;
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  flex-shrink: 0;
 }
 
-.timeline-btn {
-  background: rgba(255, 255, 255, 0.04);
-  color: #94A3B8;
+.timeline-pill-btn {
+  background: transparent;
   border: none;
-  padding: 0.38rem 0.85rem;
-  font-size: 0.78rem;
+  color: #94A3B8;
+  padding: 0.32rem 0.75rem;
+  font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
-  white-space: nowrap;
   font-family: var(--font-mono, monospace);
-  letter-spacing: 0.02em;
-  border-right: 1px solid rgba(56, 189, 248, 0.2);
+  white-space: nowrap;
 }
 
-.timeline-btn:last-child {
-  border-right: none;
-}
-
-.timeline-btn:hover {
-  background: rgba(56, 189, 248, 0.15);
-  color: #E2E8F0;
-}
-
-.timeline-btn.active {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.35), rgba(2, 132, 199, 0.4));
+.timeline-pill-btn:hover {
   color: #FFFFFF;
-  box-shadow: inset 0 1px 4px rgba(56, 189, 248, 0.25);
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.timeline-pill-btn.active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.45), rgba(2, 132, 199, 0.55));
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 3px rgba(56, 189, 248, 0.3);
+}
+
+.btn-view-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+  color: #CBD5E1;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.32rem 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-view-summary:hover {
+  background: rgba(56, 189, 248, 0.2);
+  color: #FFFFFF;
+  border-color: rgba(56, 189, 248, 0.5);
 }
 
 /* Loading Indicator */
@@ -2478,11 +2588,7 @@ body.mode-admin .citizen-only-hint {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.72rem;
-  color: #38BDF8;
-  font-weight: 600;
-  font-family: var(--font-mono, monospace);
-  margin-left: auto;
+  margin-left: 0.2rem;
 }
 
 .timeline-spinner {
@@ -2498,7 +2604,67 @@ body.mode-admin .citizen-only-hint {
   to { transform: rotate(360deg); }
 }
 
-/* Summary Stats Row */
+/* Flood Impact Summary Modal / Popover */
+.timeline-summary-popover {
+  position: absolute;
+  top: 3.8rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  z-index: 999;
+  background: rgba(10, 18, 35, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: var(--radius-md, 12px);
+  padding: 0.85rem 1.1rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+  display: none;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 440px;
+  max-width: 580px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.timeline-summary-popover.open {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.summary-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.summary-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.summary-close-btn:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Summary Stats Inside Popover */
 .timeline-summary {
   display: flex;
   gap: 0.55rem;
@@ -2544,35 +2710,41 @@ body.mode-admin .citizen-only-hint {
 .tl-alerts { color: #F59E0B; }
 .tl-period { color: #38BDF8; font-size: 0.82rem; }
 
-/* Risk Color Legend */
-.timeline-legend {
+/* Small Compact Leaflet Risk Legend (Bottom Right Corner) */
+.compact-risk-legend {
   position: absolute;
-  bottom: 2.8rem;
-  right: 1rem;
-  z-index: 1100;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 500;
   background: rgba(10, 18, 35, 0.92);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  padding: 0.45rem 0.75rem;
+  padding: 0.4rem 0.75rem;
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  user-select: none;
 }
 
-.timeline-legend-title {
+.risk-legend-header {
   font-size: 0.65rem;
   font-weight: 800;
   color: #94A3B8;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-family: var(--font-mono, monospace);
-  margin-right: 0.2rem;
 }
 
-.legend-chip {
+.risk-legend-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.risk-legend-chip {
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -2582,68 +2754,60 @@ body.mode-admin .citizen-only-hint {
 }
 
 .legend-dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
 }
 
-/* Responsive: Compact on mobile */
+/* Responsive Overrides */
 @media (max-width: 768px) {
-  .flood-timeline-bar {
-    min-width: unset;
-    max-width: calc(100vw - 1.5rem);
-    left: 0.75rem;
-    right: 0.75rem;
-    transform: none;
-    padding: 0.5rem 0.65rem;
-    top: 0.4rem;
-  }
-
-  .timeline-row-top {
-    gap: 0.5rem;
-    justify-content: center;
-  }
-
-  .timeline-title-group {
-    display: none;
-  }
-
-  .timeline-btn {
-    padding: 0.32rem 0.6rem;
-    font-size: 0.72rem;
-  }
-
-  .timeline-summary {
+  .compact-timeline-bar {
+    top: 0.5rem;
+    padding: 0.25rem 0.5rem;
     gap: 0.35rem;
+    max-width: calc(100vw - 1rem);
   }
 
-  .timeline-stat {
-    min-width: 50px;
-    padding: 0.25rem 0.3rem;
-  }
-
-  .timeline-stat-value {
-    font-size: 0.92rem;
-  }
-
-  .timeline-stat-label {
-    font-size: 0.52rem;
-  }
-
-  .timeline-stat-period {
+  .compact-timeline-label {
     display: none;
   }
 
-  .timeline-legend {
-    bottom: 65px;
-    right: 0.5rem;
-    left: 0.5rem;
-    justify-content: center;
-    flex-wrap: wrap;
+  .timeline-pill-btn {
+    padding: 0.28rem 0.55rem;
+    font-size: 0.7rem;
+  }
+
+  .btn-view-summary {
+    padding: 0.28rem 0.5rem;
+    font-size: 0.68rem;
+  }
+
+  .timeline-summary-popover {
+    min-width: unset;
+    width: calc(100vw - 1.5rem);
+    top: 3.2rem;
+  }
+
+  .compact-risk-legend {
+    bottom: 0.75rem;
+    right: 0.75rem;
+    padding: 0.3rem 0.5rem;
     gap: 0.4rem;
-    padding: 0.35rem 0.55rem;
+  }
+
+  .risk-legend-chips {
+    gap: 0.4rem;
+  }
+
+  .risk-legend-chip {
+    font-size: 0.66rem;
+  }
+
+  .floating-control-btn {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.74rem;
   }
 }
 
