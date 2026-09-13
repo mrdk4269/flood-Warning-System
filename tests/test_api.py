@@ -315,6 +315,43 @@ class TestFloodGuard(unittest.TestCase):
                 self.assertIn(f, st, f"Station {st.get('location_name')} missing field '{f}'")
             self.assertEqual(st["country"], "India")
 
+    def test_flood_effect_areas_api(self):
+        """Verify /api/flood-effect-areas temporal & geographic spatial GeoJSON endpoints."""
+        # 1. Default (today)
+        res = self.client.get("/api/flood-effect-areas?period=today")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("type"), "FeatureCollection")
+        self.assertGreater(len(data.get("features", [])), 0)
+
+        # 2. Check structure of features
+        feat = data["features"][0]
+        self.assertIn("id", feat)
+        self.assertIn("properties", feat)
+        self.assertIn("geometry", feat)
+        self.assertIn(feat["geometry"]["type"], ["Polygon", "MultiPolygon"])
+        props = feat["properties"]
+        for field in ["id", "name", "state", "district", "severity", "rainfall", "water_level", "affected_area_sqkm", "timestamp"]:
+            self.assertIn(field, props, f"Missing {field} in flood effect properties")
+
+        # 3. Last 7 Days filter
+        res_7d = self.client.get("/api/flood-effect-areas?period=7days")
+        self.assertEqual(res_7d.status_code, 200)
+        d_7d = res_7d.get_json()
+        self.assertGreaterEqual(len(d_7d.get("features", [])), len(data.get("features", [])))
+
+        # 4. State filter
+        res_odisha = self.client.get("/api/flood-effect-areas?period=all&state=Odisha")
+        self.assertEqual(res_odisha.status_code, 200)
+        d_odisha = res_odisha.get_json()
+        self.assertTrue(all(f["properties"]["state"].lower() == "odisha" for f in d_odisha.get("features", [])))
+
+        # 5. District filter
+        res_cuttack = self.client.get("/api/flood-effect-areas?period=all&state=Odisha&district=Cuttack")
+        self.assertEqual(res_cuttack.status_code, 200)
+        d_cuttack = res_cuttack.get_json()
+        self.assertTrue(all(f["properties"]["district"].lower() == "cuttack" for f in d_cuttack.get("features", [])))
+
 if __name__ == "__main__":
     unittest.main()
 

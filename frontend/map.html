@@ -108,6 +108,68 @@
   <div class="map-page-wrapper">
     <div id="map-container"></div>
 
+    <!-- =====================================================================
+         FLOOD IMPACT TIMELINE — Citizen-First Time Filter
+         ===================================================================== -->
+    <div class="flood-timeline-bar" id="flood-timeline-bar">
+      <div class="timeline-row-top">
+        <div class="timeline-title-group">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span class="timeline-title">Flood Impact Timeline</span>
+        </div>
+
+        <div class="timeline-buttons">
+          <button class="timeline-btn active" data-period="today" onclick="setTimelineFilter('today')">Today</button>
+          <button class="timeline-btn" data-period="7days" onclick="setTimelineFilter('7days')">Last 7 Days</button>
+          <button class="timeline-btn" data-period="30days" onclick="setTimelineFilter('30days')">Last 30 Days</button>
+        </div>
+
+        <div id="timeline-loading" class="timeline-loading" style="display: none;">
+          <span class="timeline-spinner"></span>
+          <span>Updating...</span>
+        </div>
+      </div>
+
+      <!-- Summary Stats Row -->
+      <div class="timeline-summary" id="timeline-summary">
+        <div class="timeline-stat">
+          <span class="timeline-stat-value" id="tl-total-areas">0</span>
+          <span class="timeline-stat-label">Affected Areas</span>
+        </div>
+        <div class="timeline-stat">
+          <span class="timeline-stat-value tl-high" id="tl-high-risk">0</span>
+          <span class="timeline-stat-label">High Risk</span>
+        </div>
+        <div class="timeline-stat">
+          <span class="timeline-stat-value tl-critical" id="tl-critical-risk">0</span>
+          <span class="timeline-stat-label">Critical</span>
+        </div>
+        <div class="timeline-stat">
+          <span class="timeline-stat-value tl-alerts" id="tl-active-alerts">0</span>
+          <span class="timeline-stat-label">Active Alerts</span>
+        </div>
+        <div class="timeline-stat timeline-stat-period">
+          <span class="timeline-stat-value tl-period" id="tl-period-label">Today</span>
+          <span class="timeline-stat-label">Time Period</span>
+        </div>
+      </div>
+
+      <!-- No Flood Data Alert Notice (Requirement #9) -->
+      <div id="timeline-empty-notice" class="timeline-empty-notice" style="display: none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>No verified flood-effect areas found for the selected period.</span>
+      </div>
+    </div>
+
+    <!-- Risk Color Legend (Map Overlay) -->
+    <div class="timeline-legend" id="timeline-legend">
+      <span class="timeline-legend-title">Risk Legend</span>
+      <span class="legend-chip"><span class="legend-dot" style="background: #10B981;"></span>Low</span>
+      <span class="legend-chip"><span class="legend-dot" style="background: #EAB308;"></span>Moderate</span>
+      <span class="legend-chip"><span class="legend-dot" style="background: #EA580C;"></span>High</span>
+      <span class="legend-chip"><span class="legend-dot" style="background: #DC2626;"></span>Critical</span>
+    </div>
+
     <!-- Admin-Only GIS Mode Top Bar (Requirements #1, #2, #4, #8) -->
     <div class="map-mode-control-bar admin-only-feature">
       <div class="mode-toggle-group">

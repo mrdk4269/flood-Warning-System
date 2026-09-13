@@ -2385,5 +2385,304 @@ body.mode-admin .citizen-only-hint {
   }
 }
 
+/* =============================================================================
+   FLOOD IMPACT TIMELINE — Time Period Filter Bar
+   ============================================================================= */
+
+.flood-timeline-bar {
+  position: absolute;
+  top: 0.65rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  background: rgba(10, 18, 35, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: var(--radius-md, 12px);
+  padding: 0.65rem 1rem;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 480px;
+  max-width: 700px;
+}
+
+.timeline-row-top {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.timeline-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.timeline-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #E2E8F0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+}
+
+/* Three Period Buttons */
+.timeline-buttons {
+  display: flex;
+  gap: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  flex-shrink: 0;
+}
+
+.timeline-btn {
+  background: rgba(255, 255, 255, 0.04);
+  color: #94A3B8;
+  border: none;
+  padding: 0.38rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.02em;
+  border-right: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.timeline-btn:last-child {
+  border-right: none;
+}
+
+.timeline-btn:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #E2E8F0;
+}
+
+.timeline-btn.active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.35), rgba(2, 132, 199, 0.4));
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 4px rgba(56, 189, 248, 0.25);
+}
+
+/* Loading Indicator */
+.timeline-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: #38BDF8;
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+  margin-left: auto;
+}
+
+.timeline-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(56, 189, 248, 0.3);
+  border-top-color: #38BDF8;
+  border-radius: 50%;
+  animation: tlSpin 0.7s linear infinite;
+}
+
+@keyframes tlSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Summary Stats Row */
+.timeline-summary {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.timeline-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 65px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 0.35rem 0.45rem;
+  transition: border-color 0.2s;
+}
+
+.timeline-stat:hover {
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.timeline-stat-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  font-family: var(--font-mono, monospace);
+  line-height: 1.25;
+}
+
+.timeline-stat-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.1rem;
+}
+
+.tl-high { color: #EA580C; }
+.tl-critical { color: #DC2626; }
+.tl-alerts { color: #F59E0B; }
+.tl-period { color: #38BDF8; font-size: 0.82rem; }
+
+/* Risk Color Legend */
+.timeline-legend {
+  position: absolute;
+  bottom: 2.8rem;
+  right: 1rem;
+  z-index: 1100;
+  background: rgba(10, 18, 35, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+.timeline-legend-title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--font-mono, monospace);
+  margin-right: 0.2rem;
+}
+
+.legend-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #CBD5E1;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Responsive: Compact on mobile */
+@media (max-width: 768px) {
+  .flood-timeline-bar {
+    min-width: unset;
+    max-width: calc(100vw - 1.5rem);
+    left: 0.75rem;
+    right: 0.75rem;
+    transform: none;
+    padding: 0.5rem 0.65rem;
+    top: 0.4rem;
+  }
+
+  .timeline-row-top {
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .timeline-title-group {
+    display: none;
+  }
+
+  .timeline-btn {
+    padding: 0.32rem 0.6rem;
+    font-size: 0.72rem;
+  }
+
+  .timeline-summary {
+    gap: 0.35rem;
+  }
+
+  .timeline-stat {
+    min-width: 50px;
+    padding: 0.25rem 0.3rem;
+  }
+
+  .timeline-stat-value {
+    font-size: 0.92rem;
+  }
+
+  .timeline-stat-label {
+    font-size: 0.52rem;
+  }
+
+  .timeline-stat-period {
+    display: none;
+  }
+
+  .timeline-legend {
+    bottom: 65px;
+    right: 0.5rem;
+    left: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.35rem 0.55rem;
+  }
+}
+
+.timeline-empty-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  color: #FCD34D;
+  font-size: 0.74rem;
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+  text-align: center;
+  animation: fadeIn 0.3s ease;
+}
+
+.flood-impact-polygon {
+  cursor: pointer;
+  transition: fill-opacity 0.2s ease, stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+.flood-impact-leaflet-popup .leaflet-popup-content-wrapper {
+  background: rgba(10, 18, 35, 0.96) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8) !important;
+}
+
+.flood-impact-leaflet-popup .leaflet-popup-tip {
+  background: rgba(10, 18, 35, 0.96) !important;
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+
 
 

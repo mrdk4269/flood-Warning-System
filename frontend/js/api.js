@@ -211,6 +211,11 @@ const API = {
     return this.fetchJson(`/api/geojson/forecast-risk${state ? "?state=" + encodeURIComponent(state) : ""}`);
   },
 
+  async getFloodEffectAreas(params = {}) {
+    const q = typeof params === "string" ? params : new URLSearchParams(params).toString();
+    return this.fetchJson(`/api/flood-effect-areas${q ? "?" + q : ""}`);
+  },
+
   async getLiveRainfall(params = {}) {
     const q = typeof params === "string" ? `region=${encodeURIComponent(params)}` : new URLSearchParams(params).toString();
     return this.fetchJson(`/api/live-data/rainfall?${q}`);

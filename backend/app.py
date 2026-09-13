@@ -20,6 +20,11 @@ from backend.india_geo_data import (
     get_india_states_geojson, 
     get_forecast_risk_geojson
 )
+from backend.flood_areas_data import (
+    get_flood_effect_geojson, 
+    get_flood_effect_areas, 
+    NATIONWIDE_FLOOD_EFFECT_AREAS
+)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
@@ -796,6 +801,19 @@ def api_geojson_forecast_risk():
     """Layer 12: 3-day forward precipitation and inundation hazard zones."""
     state = request.args.get("state")
     return jsonify(get_forecast_risk_geojson(state))
+
+@app.route("/api/flood-effect-areas", methods=["GET"])
+def api_flood_effect_areas():
+    """
+    Flood Impact Timeline & Spatial Flood Effect Areas Endpoint.
+    Returns authentic GeoJSON Polygon & MultiPolygon flood areas
+    filtered by time period (today, 7days, 30days, all), state, district, or basin.
+    """
+    period = request.args.get("period", "today").lower()
+    state = request.args.get("state")
+    district = request.args.get("district")
+    basin = request.args.get("basin")
+    return jsonify(get_flood_effect_geojson(period=period, state=state, district=district, basin=basin))
 
 # =============================================================================
 # REST API: UNIFIED LIVE INDIA FLOOD DATA SYSTEM (Requirements #3, #5, #10, #11, #17)

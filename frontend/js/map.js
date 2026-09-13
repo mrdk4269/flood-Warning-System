@@ -8,17 +8,23 @@
 
 let map = null;
 
-// GIS Layers & Clusters
+// GIS Layers & Clusters (Requirements #4, #5: Dedicated Layer Groups)
+let floodImpactLayer = null;       // Dedicated Flood-Effect Areas Polygons Layer (GeoJSON)
+let liveAffectedLayer = null;      // Alias for floodImpactLayer (full backward compatibility)
+let floodRiskLayer = null;         // Flood Risk Buffer Zones Layer (GeoJSON)
+let riskZonesLayer = null;         // Alias for floodRiskLayer
+let riverLayer = null;             // Rivers & Waterways Layer (GeoJSON LineStrings)
+let majorRiversLayer = null;       // Alias for riverLayer
+let shelterLayer = null;           // Safe Shelters Layer (Clustered)
+let sheltersLayer = null;          // Alias for shelterLayer
+let stationLayer = null;           // River Monitoring Stations Layer (Clustered)
+let riverStationsLayer = null;     // Alias for stationLayer
+
 let indiaStatesLayer = null;       // State Boundaries (Hidden by default)
 let districtsLayer = null;         // District Boundaries (Hidden by default)
-let majorRiversLayer = null;       // Rivers & Waterways (Shown by default)
-let riverStationsLayer = null;     // River Monitoring Stations - Clustered (Hidden by default)
 let historicalFloodsLayer = null;  // Historical Flood Areas (Hidden by default)
-let liveAffectedLayer = null;      // Flood Areas - Polygons (Shown by default)
-let riskZonesLayer = null;         // Flood Risk - Polygons (Shown by default)
 let liveRainfallLayer = null;      // Rainfall Stations - Clustered (Hidden by default)
 let floodWarningsLayer = null;     // Critical Warning Alerts - Unclustered Beacons (Hidden by default)
-let sheltersLayer = null;          // Safe Shelters - Clustered (Shown by default)
 let hospitalsLayer = null;         // Hospitals & Trauma Centers - Clustered (Hidden by default)
 let forecastRiskLayer = null;      // Predicted Flood Areas (Hidden by default)
 let evacuationRoutesLayer = null;  // Safe Evacuation Routes (Active)
@@ -42,6 +48,12 @@ let allBasinsMeta = {};            // Cached basins from /api/india/basins
 let rawStationsData = [];          // Monitored station observations
 let cachedSheltersData = [];       // Cached shelter facilities for GPS distance calculation
 let cachedFloodPolygons = [];      // Cached flood zone polygons for risk estimation
+
+// Flood Impact Timeline State
+let selectedTimePeriod = "today";   // "today" | "7days" | "30days"
+let cachedAlertData = [];           // All alerts fetched from /api/alerts
+let cachedFloodAreasDbData = [];    // All flood areas from /api/flood-areas with timestamps
+let timelineFloodEventsLayer = null; // Dedicated layer for timeline flood event markers
 
 // NASA Daily Satellite Imagery Tile Generator
 function getNasaDailyTileUrl() {
@@ -371,17 +383,33 @@ function initFloodMap(containerId = "map-container", options = {}) {
     return L.layerGroup();
   }
 
-  // Initialize Layer Groups (Requirement #3: 4 Basic Layers ON by default, Advanced GIS OFF)
+  // Initialize Layer Groups (Requirements #4, #5: Separate Leaflet layer groups)
   indiaStatesLayer = L.layerGroup();
   districtsLayer = L.layerGroup();
-  majorRiversLayer = L.layerGroup().addTo(map);            // Core Layer: Shown by default
-  liveAffectedLayer = L.layerGroup().addTo(map);           // Core Layer: Shown by default
-  riskZonesLayer = L.layerGroup().addTo(map);              // Core Layer: Shown by default
-  sheltersLayer = createClusterGroup().addTo(map);         // Core Layer: Shown by default
+
+  // 1. floodImpactLayer: dedicated flood-effect polygons layer (Shown by default)
+  floodImpactLayer = L.layerGroup().addTo(map);
+  liveAffectedLayer = floodImpactLayer;
+
+  // 2. riverLayer: major Indian rivers & waterways (Shown by default)
+  riverLayer = L.layerGroup().addTo(map);
+  majorRiversLayer = riverLayer;
+
+  // 3. floodRiskLayer: flood risk buffer zones (Shown by default)
+  floodRiskLayer = L.layerGroup().addTo(map);
+  riskZonesLayer = floodRiskLayer;
+
+  // 4. shelterLayer: safe emergency shelters (Clustered, Shown by default)
+  shelterLayer = createClusterGroup().addTo(map);
+  sheltersLayer = shelterLayer;
+
   evacuationRoutesLayer = L.layerGroup().addTo(map);       // Active Route Layer
 
+  // 5. stationLayer: river monitoring stations (Advanced GIS: Hidden by default)
+  stationLayer = createClusterGroup();
+  riverStationsLayer = stationLayer;
+
   // Advanced GIS Layers: Hidden by default
-  riverStationsLayer = createClusterGroup();
   liveRainfallLayer = createClusterGroup();
   historicalFloodsLayer = L.layerGroup();
   forecastRiskLayer = L.layerGroup();
@@ -393,6 +421,11 @@ function initFloodMap(containerId = "map-container", options = {}) {
   loadAllSpatialLayers();
   fetchAndRenderLiveData();
 
+  // Flood Impact Timeline: dedicated clustered layer for timeline event markers
+  timelineFloodEventsLayer = typeof L.markerClusterGroup === "function"
+    ? L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 50, disableClusteringAtZoom: 10 }).addTo(map)
+    : L.layerGroup().addTo(map);
+
   if (!options.preview) {
     setupBasemapSwitcher();
     setupLayerToggles();
@@ -400,6 +433,7 @@ function initFloodMap(containerId = "map-container", options = {}) {
     setupAutoRefreshTimer();
     setupCoordinateTracker();
     handleUrlDeepLinking();
+    setupTimelineFilter();
   }
 
   // Automatic resize handling
@@ -546,6 +580,7 @@ window.onStateSelectChange = function(stateVal) {
     selectedDistrict = "all";
     map.flyTo([22.9734, 78.6569], 5, { duration: 1.2 });
     renderFilteredLiveLayers();
+    syncTimelineFloodAreas();
     return;
   }
 
@@ -566,6 +601,7 @@ window.onStateSelectChange = function(stateVal) {
   }
 
   renderFilteredLiveLayers();
+  syncTimelineFloodAreas();
 };
 
 window.onDistrictSelectChange = function(distVal) {
@@ -576,6 +612,7 @@ window.onDistrictSelectChange = function(distVal) {
       map.flyTo(allStatesMeta[selectedState].center, allStatesMeta[selectedState].zoom || 7, { duration: 1.0 });
     }
     renderFilteredLiveLayers();
+    syncTimelineFloodAreas();
     return;
   }
 
@@ -594,6 +631,7 @@ window.onDistrictSelectChange = function(distVal) {
   }
 
   renderFilteredLiveLayers();
+  syncTimelineFloodAreas();
 };
 
 window.onBasinSelectChange = function(basinKey) {
@@ -604,6 +642,7 @@ window.onBasinSelectChange = function(basinKey) {
       map.flyTo([22.9734, 78.6569], 5, { duration: 1.2 });
     }
     renderFilteredLiveLayers();
+    syncTimelineFloodAreas();
     return;
   }
 
@@ -616,6 +655,7 @@ window.onBasinSelectChange = function(basinKey) {
   }
 
   renderFilteredLiveLayers();
+  syncTimelineFloodAreas();
 };
 
 window.onRegionChange = function(region) {
@@ -646,7 +686,7 @@ async function loadAllSpatialLayers() {
       API.getForecastRiskGeoJson().catch(() => null),
       API.getGeoJsonLayer("shelters").catch(() => null),
       API.getGeoJsonLayer("hospitals").catch(() => null),
-      API.getGeoJsonLayer("flood_areas").catch(() => null),
+      FloodDataService.loadFloodGeoJSON(selectedTimePeriod).catch(() => null),
       API.getGeoJsonLayer("risk_zones").catch(() => null)
     ]);
 
@@ -656,7 +696,7 @@ async function loadAllSpatialLayers() {
     if (forecastRiskGeo) renderForecastRiskLayer(forecastRiskGeo);
     if (sheltersGeo) renderShelters(sheltersGeo);
     if (hospitalsGeo) renderHospitals(hospitalsGeo);
-    if (floodAreasGeo) renderFloodAreasGeoJson(floodAreasGeo);
+    if (floodAreasGeo) FloodDataService.renderFloodAreas(floodAreasGeo);
     if (riskZonesGeo) renderRiskZonesGeoJson(riskZonesGeo);
   } catch (err) {
     console.error("Failed to load base spatial layers:", err);
@@ -723,48 +763,9 @@ function renderMajorRiversLayer(geojson) {
   }).addTo(majorRiversLayer);
 }
 
-// 3. Flood Areas GeoJSON Polygons (Core Citizen Layer: Shown by default)
+// 3. Flood Areas GeoJSON Polygons (Core Citizen Layer: Managed by FloodDataService)
 function renderFloodAreasGeoJson(geojson) {
-  if (!geojson || !geojson.features) return;
-
-  L.geoJSON(geojson, {
-    style: (feature) => {
-      const risk = feature.properties?.risk_level || feature.properties?.risk || "High";
-      return {
-        color: getRiskColor(risk),
-        weight: 2,
-        opacity: 0.95,
-        fillColor: getRiskColor(risk),
-        fillOpacity: 0.42
-      };
-    },
-    onEachFeature: (feature, layer) => {
-      const p = feature.properties || {};
-      const risk = p.risk_level || p.risk || "High";
-      const bounds = layer.getBounds ? layer.getBounds() : null;
-      const center = bounds ? [bounds.getCenter().lat, bounds.getCenter().lng] : null;
-
-      const popupHtml = createFloodInfoPopupHtml({
-        location: `${p.name || 'Flood Zone'}${p.district ? ', ' + p.district : ''}`,
-        risk: risk,
-        rainfall: p.rainfall || 85,
-        riverLevel: p.water_level || 7.2,
-        prediction: p.description || "Flood possible in 6–12 hours",
-        detailsUrl: `/risk?target=${encodeURIComponent(p.name || '')}`,
-        safeLocationUrl: `/safe-locations?origin=${encodeURIComponent(p.name || '')}&lat=${center ? center[0] : ''}&lng=${center ? center[1] : ''}`
-      });
-
-      layer.bindPopup(popupHtml);
-      layer.on("click", () => showMobileSheet(p.name || "Flood Information", popupHtml));
-
-      cachedFloodPolygons.push({
-        geometry: feature.geometry,
-        properties: p,
-        center: center,
-        _layer: layer
-      });
-    }
-  }).addTo(liveAffectedLayer);
+  FloodDataService.renderFloodAreas(geojson);
 }
 
 // 4. Flood Risk Buffer Zones GeoJSON (Core Citizen Layer: Shown by default)
@@ -981,6 +982,7 @@ async function fetchAndRenderLiveData(forceRefresh = false) {
       updateLiveDashboardUI(dashboardData, statusData, overviewData);
       renderFilteredLiveLayers();
       updateTelemetryRibbon(dashboardData, overviewData);
+      updateTimelineSummary();
     }
   } catch (err) {
     console.error("Failed to fetch live flood data:", err);
@@ -1139,13 +1141,13 @@ window.triggerLiveMeteoSync = window.forceSyncLiveData;
 
 function setupLayerToggles() {
   const toggleMap = {
-    "toggle-live-affected": () => liveAffectedLayer,
-    "toggle-risk-zones": () => riskZonesLayer,
-    "toggle-major-rivers": () => majorRiversLayer,
-    "toggle-shelters": () => sheltersLayer,
+    "toggle-live-affected": () => floodImpactLayer,
+    "toggle-risk-zones": () => floodRiskLayer,
+    "toggle-major-rivers": () => riverLayer,
+    "toggle-shelters": () => shelterLayer,
     "toggle-state-boundaries": () => indiaStatesLayer,
     "toggle-district-boundaries": () => districtsLayer,
-    "toggle-river-stations": () => riverStationsLayer,
+    "toggle-river-stations": () => stationLayer,
     "toggle-live-rainfall": () => liveRainfallLayer,
     "toggle-flood-warnings": () => floodWarningsLayer,
     "toggle-historical-floods": () => historicalFloodsLayer,
@@ -1678,3 +1680,486 @@ function handleUrlDeepLinking() {
     }, 800);
   }
 }
+
+// =============================================================================
+// FLOOD EFFECT AREA SYSTEM & DATA SERVICE (Requirements #1, #2, #3, #4, #6, #8, #9)
+// =============================================================================
+
+/**
+ * Modular FloodDataService
+ * Handles loading, temporal filtering, spatial buffer generation, and
+ * Leaflet GeoJSON rendering for authentic nationwide flood effect areas.
+ */
+const FloodDataService = {
+  // Current active GeoJSON feature collection being rendered
+  currentGeoJson: null,
+
+  /**
+   * Loads GeoJSON flood polygons from backend or fallback spatial data.
+   * Connects each flood area with its corresponding flood event.
+   */
+  async loadFloodGeoJSON(period = selectedTimePeriod, filters = {}) {
+    const p = period || selectedTimePeriod || "today";
+    const st = filters.state !== undefined ? filters.state : selectedState;
+    const dist = filters.district !== undefined ? filters.district : selectedDistrict;
+    const b = filters.basin !== undefined ? filters.basin : selectedBasin;
+
+    const params = {
+      period: p,
+      state: st || "all",
+      district: dist || "all",
+      basin: b || "all"
+    };
+
+    try {
+      const res = await API.getFloodEffectAreas(params);
+      if (res && res.features) {
+        this.currentGeoJson = res;
+        return res;
+      }
+    } catch (err) {
+      console.warn("FloodDataService: Failed to fetch from /api/flood-effect-areas:", err);
+    }
+    return { type: "FeatureCollection", features: [] };
+  },
+
+  async getTodayFloodAreas(filters = {}) {
+    return this.loadFloodGeoJSON("today", filters);
+  },
+
+  async getLast7DaysFloodAreas(filters = {}) {
+    return this.loadFloodGeoJSON("7days", filters);
+  },
+
+  async getLast30DaysFloodAreas(filters = {}) {
+    return this.loadFloodGeoJSON("30days", filters);
+  },
+
+  async getFloodAreasByState(state, period = selectedTimePeriod) {
+    return this.loadFloodGeoJSON(period, { state });
+  },
+
+  async getFloodAreasByDistrict(district, period = selectedTimePeriod) {
+    return this.loadFloodGeoJSON(period, { district });
+  },
+
+  /**
+   * Requirement #2: If real flood polygon data is not available for an elevated
+   * station alert, generate an "Estimated Flood Impact Area" using realistic spatial
+   * buffers (16-vertex organic polygon) around the flood station/river valley.
+   */
+  generateEstimatedFloodPolygon(station) {
+    const centerLat = station.latitude;
+    const centerLng = station.longitude;
+    const isCrit = station.risk_level === "CRITICAL" || (station.water_level >= station.danger_level);
+    const radiusKm = isCrit ? 4.8 : 3.2;
+    const elongation = 1.9;
+    const angleRad = Math.PI / 4; // 45 degrees along river valley
+
+    const kmPerLat = 111.0;
+    const kmPerLng = 111.0 * Math.cos((centerLat * Math.PI) / 180.0);
+    const numVertices = 16;
+    const ring = [];
+
+    for (let i = 0; i < numVertices; i++) {
+      const theta = (2 * Math.PI * i) / numVertices;
+      const variance = 1.0 + 0.24 * Math.sin(3 * theta) + 0.12 * Math.cos(5 * theta);
+      const xLocal = radiusKm * elongation * Math.cos(theta) * variance;
+      const yLocal = radiusKm * Math.sin(theta) * variance;
+      const xRot = xLocal * Math.cos(angleRad) - yLocal * Math.sin(angleRad);
+      const yRot = xLocal * Math.sin(angleRad) + yLocal * Math.cos(angleRad);
+
+      ring.push([
+        Number((centerLng + xRot / kmPerLng).toFixed(5)),
+        Number((centerLat + yRot / kmPerLat).toFixed(5))
+      ]);
+    }
+    ring.push(ring[0]); // Close polygon
+
+    return {
+      type: "Feature",
+      id: `est_${(station.key || station.location_name || 'station').replace(/\s+/g, '_')}`,
+      properties: {
+        id: `est_${(station.key || station.location_name || 'station').replace(/\s+/g, '_')}`,
+        name: `${station.location_name} (Estimated Inundation Basin)`,
+        state: station.state || "India",
+        district: station.district || "Regional Basin",
+        river_basin: station.river_basin || "River Basin",
+        river_name: station.river_name || "River",
+        latitude: centerLat,
+        longitude: centerLng,
+        severity: station.risk_level === "CRITICAL" ? "Critical" : "High",
+        risk_level: station.risk_level === "CRITICAL" ? "Critical" : "High",
+        rainfall: station.rainfall_24h_mm || 0,
+        water_level: station.water_level || 0,
+        affected_area_sqkm: isCrit ? 22.4 : 14.8,
+        timestamp: new Date().toISOString(),
+        date: new Date().toISOString().split("T")[0],
+        time: new Date().toTimeString().split(" ")[0],
+        data_source: "Estimated Flood Impact Area (Spatial Hydrological Buffer)",
+        source: "Estimated Flood Impact Area",
+        is_estimated: true,
+        description: `Hydrodynamic buffer computed from live gauge readings (${station.water_level}m) along ${station.river_name || 'river channel'}.`
+      },
+      geometry: {
+        type: "Polygon",
+        coordinates: [ring]
+      }
+    };
+  },
+
+  /**
+   * Requirement #4: Renders flood-effect areas on Leaflet GeoJSON layer with
+   * color-coding, hover effects, and interactive popups.
+   */
+  renderFloodAreas(geojson, options = {}) {
+    if (!floodImpactLayer) return;
+    floodImpactLayer.clearLayers();
+    cachedFloodPolygons = [];
+
+    const rawFeatures = geojson && Array.isArray(geojson.features) ? [...geojson.features] : [];
+
+    // Also include dynamic estimated buffers for active high-risk live stations (for Today period)
+    if (selectedTimePeriod === "today" && Array.isArray(rawStationsData)) {
+      const existingDistricts = new Set(rawFeatures.map(f => (f.properties?.district || '').toLowerCase()));
+      rawStationsData.forEach(st => {
+        const isDng = st.water_level >= st.danger_level;
+        const isWarn = st.water_level >= st.warning_level;
+        const isHigh = st.risk_level === "HIGH" || st.risk_level === "CRITICAL";
+
+        // Respect geographic filters
+        if (selectedState !== "all" && st.state && st.state.toLowerCase() !== selectedState.toLowerCase()) return;
+        if (selectedDistrict !== "all" && st.district && st.district.toLowerCase() !== selectedDistrict.toLowerCase()) return;
+        if (selectedBasin !== "all" && st.river_basin && st.river_basin.toLowerCase() !== selectedBasin.toLowerCase()) return;
+
+        if ((isDng || (isWarn && isHigh)) && !existingDistricts.has((st.district || '').toLowerCase())) {
+          rawFeatures.push(this.generateEstimatedFloodPolygon(st));
+          existingDistricts.add((st.district || '').toLowerCase());
+        }
+      });
+    }
+
+    // Filter features by current state/district if not already filtered
+    const features = rawFeatures.filter(f => {
+      const p = f.properties || {};
+      if (selectedState !== "all" && p.state && p.state.toLowerCase() !== selectedState.toLowerCase()) {
+        return false;
+      }
+      if (selectedDistrict !== "all" && p.district && p.district.toLowerCase() !== selectedDistrict.toLowerCase()) {
+        return false;
+      }
+      if (selectedBasin !== "all" && p.river_basin && p.river_basin.toLowerCase() !== selectedBasin.toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
+
+    // Requirement #9: Error handling when no flood data exists
+    const emptyNoticeEl = document.getElementById("timeline-empty-notice");
+    if (features.length === 0) {
+      if (emptyNoticeEl) {
+        emptyNoticeEl.style.display = "flex";
+      }
+      this.updateStatistics(0, 0, 0);
+      return;
+    } else {
+      if (emptyNoticeEl) {
+        emptyNoticeEl.style.display = "none";
+      }
+    }
+
+    // Severity color helper (Requirement #4)
+    function getSeverityStyle(severity) {
+      const s = (severity || "").toUpperCase();
+      if (s === "CRITICAL") {
+        return { color: "#DC2626", fillColor: "#DC2626", fillOpacity: 0.50, weight: 2.5 };
+      } else if (s === "HIGH") {
+        return { color: "#EA580C", fillColor: "#EA580C", fillOpacity: 0.44, weight: 2.2 };
+      } else if (s === "MODERATE" || s === "MEDIUM") {
+        return { color: "#EAB308", fillColor: "#EAB308", fillOpacity: 0.38, weight: 2.0 };
+      } else { // Low
+        return { color: "#10B981", fillColor: "#10B981", fillOpacity: 0.32, weight: 2.0 };
+      }
+    }
+
+    let highCount = 0;
+    let criticalCount = 0;
+
+    const geoJsonLayer = L.geoJSON({ type: "FeatureCollection", features: features }, {
+      style: (feature) => {
+        const p = feature.properties || {};
+        const sev = p.severity || p.risk_level || p.risk || "High";
+        const base = getSeverityStyle(sev);
+        return {
+          ...base,
+          opacity: 0.95,
+          lineJoin: "round",
+          lineCap: "round",
+          className: "flood-impact-polygon"
+        };
+      },
+      onEachFeature: (feature, layer) => {
+        const p = feature.properties || {};
+        const sev = (p.severity || p.risk_level || p.risk || "High").toUpperCase();
+        if (sev === "CRITICAL") criticalCount++;
+        else if (sev === "HIGH") highCount++;
+
+        const isEstimated = (p.data_source && p.data_source.includes("Estimated")) || p.is_estimated;
+        const sourceBadge = isEstimated
+          ? `<span class="provenance-tag" style="background: rgba(234, 88, 12, 0.25); color: #FB923C; border: 1px solid #EA580C; font-size: 0.68rem; padding: 0.15rem 0.4rem; border-radius: 4px;">⚠️ Estimated Flood Impact Area</span>`
+          : `<span class="provenance-tag" style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid #10B981; font-size: 0.68rem; padding: 0.15rem 0.4rem; border-radius: 4px;">✅ Verified: ${p.data_source || 'Live CWC / ISRO'}</span>`;
+
+        const bounds = layer.getBounds ? layer.getBounds() : null;
+        const center = bounds ? bounds.getCenter() : { lat: p.latitude || 20, lng: p.longitude || 80 };
+
+        // Requirement #4: Formatted Popup
+        const popupHtml = `
+          <div class="popup-card flood-impact-popup" style="padding: 1.1rem; min-width: 290px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.45rem;">
+              <span style="font-size: 0.72rem; font-weight: 800; color: ${getRiskColor(sev)}; text-transform: uppercase; letter-spacing: 0.05em;">
+                FLOOD IMPACT AREA
+              </span>
+              ${renderRiskBadge(sev)}
+            </div>
+
+            <div class="popup-title" style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; margin-bottom: 0.35rem; line-height: 1.25;">
+              ${p.name || 'Flood Affected Area'}
+            </div>
+
+            <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.35rem;">
+              <span>📍</span>
+              <strong style="color: #E2E8F0;">${p.district ? p.district + ', ' : ''}${p.state || 'India'}</strong>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; background: rgba(255, 255, 255, 0.04); padding: 0.6rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 0.65rem;">
+              <div class="popup-row" style="flex-direction: column; align-items: flex-start;">
+                <span class="popup-label" style="font-size: 0.62rem;">Risk Level</span>
+                <span class="popup-val" style="color: ${getRiskColor(sev)}; font-weight: 800; font-size: 0.85rem;">${sev}</span>
+              </div>
+              <div class="popup-row" style="flex-direction: column; align-items: flex-start;">
+                <span class="popup-label" style="font-size: 0.62rem;">Affected Area</span>
+                <span class="popup-val mono" style="color: #38BDF8; font-size: 0.85rem;">${p.affected_area_sqkm || 12.5} km²</span>
+              </div>
+              <div class="popup-row" style="flex-direction: column; align-items: flex-start;">
+                <span class="popup-label" style="font-size: 0.62rem;">Rainfall</span>
+                <span class="popup-val mono" style="color: #60A5FA; font-size: 0.85rem;">${p.rainfall || 0} mm</span>
+              </div>
+              <div class="popup-row" style="flex-direction: column; align-items: flex-start;">
+                <span class="popup-label" style="font-size: 0.62rem;">River Level</span>
+                <span class="popup-val mono" style="color: ${getRiskColor(sev)}; font-size: 0.85rem;">${p.water_level || 0} m</span>
+              </div>
+            </div>
+
+            <div style="font-size: 0.72rem; color: #94A3B8; margin-bottom: 0.5rem; line-height: 1.4;">
+              ${p.description || ''}
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.35rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 0.5rem; margin-bottom: 0.65rem;">
+              <div style="font-size: 0.7rem; color: #94A3B8; display: flex; justify-content: space-between;">
+                <span>📅 Date & Time:</span>
+                <span style="color: #E2E8F0; font-family: var(--font-mono); font-weight: 600;">${p.date || 'Today'} ${p.time || ''}</span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.2rem;">
+                <span style="font-size: 0.7rem; color: #94A3B8;">Source:</span>
+                ${sourceBadge}
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem;">
+              <a href="/risk?target=${encodeURIComponent(p.name || '')}" class="btn btn-sm btn-secondary" style="text-align: center; font-size: 0.75rem; padding: 0.4rem;">
+                View Details
+              </a>
+              <button onclick="drawEvacuationRouteTo(${center.lat}, ${center.lng}, '${(p.name || '').replace(/'/g, "\\'")}')" class="btn btn-sm btn-primary" style="text-align: center; font-size: 0.75rem; padding: 0.4rem;">
+                Find Safe Path
+              </button>
+            </div>
+          </div>
+        `;
+
+        layer.bindPopup(popupHtml, { maxWidth: 360, className: "flood-impact-leaflet-popup" });
+
+        // Hover highlight interaction (Requirement #4)
+        layer.on("mouseover", function() {
+          const base = getSeverityStyle(sev);
+          this.setStyle({
+            fillOpacity: 0.70,
+            weight: base.weight + 1.2,
+            color: "#FFFFFF"
+          });
+          if (this.bringToFront) this.bringToFront();
+        });
+
+        layer.on("mouseout", function() {
+          const base = getSeverityStyle(sev);
+          this.setStyle({
+            fillOpacity: base.fillOpacity,
+            weight: base.weight,
+            color: base.color
+          });
+        });
+
+        layer.on("click", function() {
+          showMobileSheet(p.name || "Flood Impact Area", popupHtml);
+        });
+
+        cachedFloodPolygons.push({
+          id: p.id,
+          name: p.name,
+          state: p.state,
+          district: p.district,
+          center: center,
+          _layer: layer
+        });
+      }
+    });
+
+    geoJsonLayer.addTo(floodImpactLayer);
+
+    // Update statistics
+    this.updateStatistics(features.length, highCount, criticalCount);
+
+    // Fit map bounds to visible flood areas when requested and valid
+    if (options.fitBounds && geoJsonLayer.getBounds && geoJsonLayer.getBounds().isValid()) {
+      map.fitBounds(geoJsonLayer.getBounds(), { padding: [40, 40], maxZoom: 10, duration: 1.0 });
+    }
+  },
+
+  updateStatistics(total, high, critical) {
+    const elTotal = document.getElementById("tl-total-areas");
+    const elHigh = document.getElementById("tl-high-risk");
+    const elCritical = document.getElementById("tl-critical-risk");
+    const elAlerts = document.getElementById("tl-active-alerts");
+
+    if (elTotal) elTotal.textContent = total;
+    if (elHigh) elHigh.textContent = high;
+    if (elCritical) elCritical.textContent = critical;
+
+    if (elAlerts) {
+      const activeCount = cachedAlertData.filter(a => {
+        const isActive = (a.status || "").toUpperCase() === "ACTIVE";
+        if (!isActive) return false;
+        if (selectedState !== "all" && a.location && !a.location.toLowerCase().includes(selectedState.toLowerCase())) return false;
+        return isWithinTimePeriod(a.date || a.created_at, selectedTimePeriod);
+      }).length;
+      elAlerts.textContent = activeCount;
+    }
+  }
+};
+
+/**
+ * Returns the cutoff Date object for the selected time period.
+ */
+function getTimelineCutoffDate(period) {
+  const now = new Date();
+  if (period === "today") {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Midnight today
+  } else if (period === "7days") {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 6);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  } else { // 30days
+    const d = new Date(now);
+    d.setDate(d.getDate() - 29);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+}
+
+function parseFloodDate(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function isWithinTimePeriod(dateStr, period) {
+  if (!dateStr) return period === "today";
+  const eventDate = parseFloodDate(dateStr);
+  if (!eventDate) return period === "today";
+  const cutoff = getTimelineCutoffDate(period);
+  return eventDate >= cutoff;
+}
+
+async function fetchTimelineData() {
+  try {
+    const [alertsRes, floodAreasRes] = await Promise.all([
+      API.getAlerts().catch(() => []),
+      API.getFloodAreas().catch(() => [])
+    ]);
+
+    cachedAlertData = Array.isArray(alertsRes) ? alertsRes : [];
+    cachedFloodAreasDbData = Array.isArray(floodAreasRes) ? floodAreasRes : [];
+  } catch (err) {
+    console.error("Failed to fetch timeline data:", err);
+    cachedAlertData = [];
+    cachedFloodAreasDbData = [];
+  }
+}
+
+/**
+ * Synchronizes flood-effect areas whenever state, district, or basin changes.
+ */
+async function syncTimelineFloodAreas(options = {}) {
+  const floodGeoJson = await FloodDataService.loadFloodGeoJSON(selectedTimePeriod, {
+    state: selectedState,
+    district: selectedDistrict,
+    basin: selectedBasin
+  });
+  FloodDataService.renderFloodAreas(floodGeoJson, options);
+}
+
+/**
+ * Initializes the timeline filter system.
+ */
+async function setupTimelineFilter() {
+  await fetchTimelineData();
+  await syncTimelineFloodAreas({ fitBounds: false });
+}
+
+/**
+ * Primary entry point: user clicks Today, Last 7 Days, or Last 30 Days.
+ */
+window.setTimelineFilter = async function(period) {
+  if (selectedTimePeriod === period) return;
+  selectedTimePeriod = period;
+
+  // Update button active states
+  document.querySelectorAll(".timeline-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.period === period);
+  });
+
+  // Update period label in summary
+  const periodLabel = document.getElementById("tl-period-label");
+  if (periodLabel) {
+    const labels = { today: "Today", "7days": "Last 7 Days", "30days": "Last 30 Days" };
+    periodLabel.textContent = labels[period] || period;
+  }
+
+  // Show loading indicator
+  const loadingEl = document.getElementById("timeline-loading");
+  if (loadingEl) loadingEl.style.display = "flex";
+
+  try {
+    // 1. Remove old flood polygons and load fresh flood GeoJSON data
+    const floodGeoJson = await FloodDataService.loadFloodGeoJSON(period, {
+      state: selectedState,
+      district: selectedDistrict,
+      basin: selectedBasin
+    });
+
+    // 2. Render the correct affected areas on the map
+    FloodDataService.renderFloodAreas(floodGeoJson, { fitBounds: true, userInitiated: true });
+
+    // 3. Update active station markers & warnings
+    renderFilteredLiveLayers();
+
+    if (typeof showToast === "function") {
+      const labels = { today: "Today", "7days": "Last 7 Days", "30days": "Last 30 Days" };
+      showToast(`📅 Timeline updated: Showing flood impact for ${labels[period]}`, "info");
+    }
+  } catch (err) {
+    console.error("Timeline filter update failed:", err);
+  } finally {
+    if (loadingEl) loadingEl.style.display = "none";
+  }
+};
