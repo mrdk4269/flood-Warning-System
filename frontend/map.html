@@ -293,10 +293,13 @@
          SIMPLIFIED CITIZEN MAP CONTROLS PANEL (LEFT SIDE)
          ========================================================================= -->
     <div class="simple-map-controls">
-      <!-- Location Search Input -->
-      <div class="map-search-bar" style="margin-bottom: 0.25rem;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="map-search-input" type="text" class="map-search-input" placeholder="Search City, District, River, Shelter...">
+      <!-- Location Search Input with Live Autocomplete Suggestions -->
+      <div class="map-search-wrapper" style="margin-bottom: 0.25rem;">
+        <div class="map-search-bar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="map-search-input" type="text" class="map-search-input" placeholder="Search City, District, River, Shelter..." autocomplete="off">
+        </div>
+        <div id="search-suggestions" class="search-suggestions-box"></div>
       </div>
 
       <!-- Quick Regional Filters & GPS -->
@@ -321,7 +324,7 @@
         </button>
       </div>
 
-      <!-- 4 Core Citizen Layers -->
+      <!-- 4 Core Citizen Layers (ON by default) -->
       <div style="margin-top: 0.35rem;">
         <div style="font-size: 0.68rem; font-family: var(--font-mono); font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem;">
           MAP LAYERS
@@ -339,7 +342,7 @@
           <label class="core-layer-item">
             <span style="display: flex; align-items: center; gap: 0.5rem;">
               <span class="layer-indicator" style="background: #F97316;"></span>
-              <span>Flood Risk Levels</span>
+              <span>Flood Risk</span>
             </span>
             <input type="checkbox" id="toggle-risk-zones" checked>
           </label>
@@ -347,7 +350,7 @@
           <label class="core-layer-item">
             <span style="display: flex; align-items: center; gap: 0.5rem;">
               <span class="layer-indicator" style="background: #06B6D4;"></span>
-              <span>Rivers & Waterways</span>
+              <span>Rivers</span>
             </span>
             <input type="checkbox" id="toggle-major-rivers" checked>
           </label>
@@ -362,17 +365,17 @@
         </div>
       </div>
 
-      <!-- Progressive Disclosure: Advanced GIS Layers Accordion -->
+      <!-- Progressive Disclosure: Advanced GIS Layers Accordion (OFF by default) -->
       <div style="margin-top: 0.2rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 0.5rem;">
-        <button class="disclosure-toggle" data-target="panel-advanced-layers" data-text-open="Hide Advanced Layers ▴" data-text-closed="More Layers / Advanced GIS ▾" onclick="toggleDisclosure('panel-advanced-layers')" style="width: 100%; justify-content: center;">
-          <span class="disclosure-text">More Layers / Advanced GIS ▾</span>
+        <button class="disclosure-toggle" data-target="panel-advanced-layers" data-text-open="Hide Advanced Layers ▴" data-text-closed="Advanced Layers ▸" onclick="toggleDisclosure('panel-advanced-layers')" style="width: 100%; justify-content: center;">
+          <span class="disclosure-text">Advanced Layers ▸</span>
         </button>
 
         <div id="panel-advanced-layers" class="disclosure-panel">
           <div style="display: flex; flex-direction: column; gap: 0.35rem;">
             <label class="core-layer-item" style="font-size: 0.76rem;">
               <span><span class="layer-indicator" style="background: #38BDF8;"></span>State Boundaries</span>
-              <input type="checkbox" id="toggle-state-boundaries" checked>
+              <input type="checkbox" id="toggle-state-boundaries">
             </label>
 
             <label class="core-layer-item" style="font-size: 0.76rem;">
@@ -381,37 +384,37 @@
             </label>
 
             <label class="core-layer-item" style="font-size: 0.76rem;">
-              <span><span class="layer-indicator" style="background: #0284C7;"></span>River Gauges</span>
-              <input type="checkbox" id="toggle-river-stations" checked>
+              <span><span class="layer-indicator" style="background: #0284C7;"></span>River Monitoring Stations</span>
+              <input type="checkbox" id="toggle-river-stations">
             </label>
 
             <label class="core-layer-item" style="font-size: 0.76rem;">
               <span><span class="layer-indicator" style="background: #38BDF8;"></span>Rainfall Stations</span>
-              <input type="checkbox" id="toggle-live-rainfall" checked>
+              <input type="checkbox" id="toggle-live-rainfall">
             </label>
 
             <label class="core-layer-item" style="font-size: 0.76rem;">
               <span><span class="layer-indicator" style="background: #EF4444;"></span>Warning Alerts</span>
-              <input type="checkbox" id="toggle-flood-warnings" checked>
+              <input type="checkbox" id="toggle-flood-warnings">
             </label>
 
             <label class="core-layer-item" style="font-size: 0.76rem;">
-              <span><span class="layer-indicator" style="background: #FBBF24;"></span>Historical Floods</span>
-              <input type="checkbox" id="toggle-historical-floods" checked>
+              <span><span class="layer-indicator" style="background: #FBBF24;"></span>Historical Flood Areas</span>
+              <input type="checkbox" id="toggle-historical-floods">
             </label>
 
             <label class="core-layer-item" style="font-size: 0.76rem;">
-              <span><span class="layer-indicator" style="background: #8B5CF6;"></span>3-Day Forecast Risk</span>
-              <input type="checkbox" id="toggle-forecast-risk" checked>
+              <span><span class="layer-indicator" style="background: #8B5CF6;"></span>Predicted Flood Areas</span>
+              <input type="checkbox" id="toggle-forecast-risk">
             </label>
 
             <label class="core-layer-item" style="font-size: 0.76rem;">
-              <span><span class="layer-indicator" style="background: #F43F5E;"></span>Medical Centers</span>
-              <input type="checkbox" id="toggle-hospitals" checked>
+              <span><span class="layer-indicator" style="background: #F43F5E;"></span>Hospitals</span>
+              <input type="checkbox" id="toggle-hospitals">
             </label>
 
             <label class="core-layer-item" style="font-size: 0.76rem;">
-              <span><span class="layer-indicator" style="background: #F97316;"></span>ISRO Bhuvan Satellite</span>
+              <span><span class="layer-indicator" style="background: #F97316;"></span>Satellite Remote Sensing</span>
               <input type="checkbox" id="toggle-bhuvan-overlay">
             </label>
 
@@ -419,11 +422,11 @@
             <div style="margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.06);">
               <label style="font-size: 0.65rem; color: #94A3B8; font-family: var(--font-mono); text-transform: uppercase;">Basemap Provider</label>
               <select id="basemap-select" class="form-select" style="padding: 0.25rem 0.4rem; font-size: 0.72rem; margin-top: 0.2rem;">
-                <option value="dark" selected>Night Voyager (Dark)</option>
+                <option value="streets" selected>OpenStreetMap Standard (Default)</option>
+                <option value="dark">Night Voyager (Dark)</option>
                 <option value="bhuvan">ISRO Bhuvan Space GIS</option>
                 <option value="nasa">NASA Daily Satellite</option>
                 <option value="satellite">High-Res Satellite (Esri)</option>
-                <option value="streets">OpenStreetMap Standard</option>
               </select>
             </div>
           </div>
@@ -454,7 +457,16 @@
           Active Warnings (0)
         </a>
       </div>
+  </div>
+
+  <!-- Mobile Bottom Sheet for Location & Marker Details (Requirement #17) -->
+  <div id="mobile-sheet" class="mobile-map-sheet">
+    <div class="mobile-map-sheet-handle"></div>
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem;">
+      <div id="mobile-sheet-title" style="font-size: 1.1rem; font-weight: 800; color: #FFFFFF;">Location Details</div>
+      <button onclick="closeMobileSheet()" style="background: none; border: none; color: #94A3B8; font-size: 1.5rem; line-height: 1; cursor: pointer; padding: 0 0.4rem;" aria-label="Close sheet">&times;</button>
     </div>
+    <div id="mobile-sheet-body"></div>
   </div>
 
   <!-- Scripts -->

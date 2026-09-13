@@ -2212,4 +2212,178 @@ body.mode-admin .citizen-only-hint {
   cursor: pointer;
 }
 
+/* =============================================================================
+   LEAFLET MARKERCLUSTER DARK GLASSMORPHISM STYLING
+   ============================================================================= */
+
+.marker-cluster-small {
+  background-color: rgba(16, 185, 129, 0.35) !important;
+  border: 2px solid rgba(16, 185, 129, 0.8) !important;
+}
+.marker-cluster-small div {
+  background-color: rgba(16, 185, 129, 0.85) !important;
+  color: #FFFFFF !important;
+}
+
+.marker-cluster-medium {
+  background-color: rgba(245, 158, 11, 0.35) !important;
+  border: 2px solid rgba(245, 158, 11, 0.8) !important;
+}
+.marker-cluster-medium div {
+  background-color: rgba(245, 158, 11, 0.85) !important;
+  color: #FFFFFF !important;
+}
+
+.marker-cluster-large {
+  background-color: rgba(239, 68, 68, 0.35) !important;
+  border: 2px solid rgba(239, 68, 68, 0.8) !important;
+}
+.marker-cluster-large div {
+  background-color: rgba(239, 68, 68, 0.85) !important;
+  color: #FFFFFF !important;
+}
+
+.marker-cluster {
+  background-clip: padding-box;
+  border-radius: 50% !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6) !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.marker-cluster:hover {
+  transform: scale(1.12);
+}
+
+.marker-cluster div {
+  width: 32px !important;
+  height: 32px !important;
+  margin-left: 4px !important;
+  margin-top: 4px !important;
+  text-align: center;
+  border-radius: 50% !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-weight: 800 !important;
+  font-size: 0.82rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* =============================================================================
+   MAP SEARCH AUTOCOMPLETE SUGGESTIONS
+   ============================================================================= */
+
+.map-search-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.search-suggestions-box {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: rgba(14, 22, 40, 0.98);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: var(--radius-sm);
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 2000;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.8);
+  display: none;
+}
+
+.search-suggestions-box.active {
+  display: block;
+}
+
+.search-suggestion-item {
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-size: 0.82rem;
+  color: #E2E8F0;
+}
+
+.search-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.search-suggestion-item:hover,
+.search-suggestion-item.selected {
+  background: rgba(56, 189, 248, 0.18);
+  color: #FFFFFF;
+}
+
+.search-suggestion-badge {
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.search-badge-station { background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.5); }
+.search-badge-shelter { background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.5); }
+.search-badge-flood { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.5); }
+.search-badge-state { background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.5); }
+.search-badge-river { background: rgba(6, 182, 212, 0.2); color: #22D3EE; border: 1px solid rgba(6, 182, 212, 0.5); }
+.search-badge-hospital { background: rgba(244, 63, 94, 0.2); color: #FB7185; border: 1px solid rgba(244, 63, 94, 0.5); }
+
+/* =============================================================================
+   MOBILE BOTTOM SHEET
+   ============================================================================= */
+
+.mobile-map-sheet {
+  position: fixed;
+  bottom: 60px;
+  left: 0;
+  right: 0;
+  background: rgba(14, 22, 40, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 20px 20px 0 0;
+  padding: 1rem 1.25rem 1.5rem;
+  z-index: 1500;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.85);
+  transform: translateY(115%);
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.mobile-map-sheet.open {
+  transform: translateY(0);
+}
+
+.mobile-map-sheet-handle {
+  width: 42px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+  margin: 0 auto 0.85rem;
+}
+
+/* Evacuation Route Polyline Styling */
+.leaflet-route-safe {
+  stroke-dasharray: 8, 8;
+  animation: dashAnimation 1.5s linear infinite;
+}
+
+@keyframes dashAnimation {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+
 
