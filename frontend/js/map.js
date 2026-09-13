@@ -13,9 +13,15 @@ let rainfallStationsLayer = null;
 let userLocationMarker = null;
 let currentBasemap = null;
 
+function getNasaDailyTileUrl() {
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${yesterday}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+}
+
 // Tile Layer Providers
 const BASEMAPS = {
-  dark: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  nasa: getNasaDailyTileUrl(),
   satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   streets: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 };
@@ -133,13 +139,55 @@ function setupBasemapSwitcher() {
     const chosen = e.target.value;
     if (BASEMAPS[chosen] && currentBasemap) {
       map.removeLayer(currentBasemap);
-      currentBasemap = L.tileLayer(BASEMAPS[chosen], { maxZoom: 19 }).addTo(map);
+      const isNasa = chosen === "nasa";
+      currentBasemap = L.tileLayer(BASEMAPS[chosen], {
+        maxZoom: isNasa ? 9 : 19,
+        attribution: isNasa ? 'Imagery &copy; NASA GIBS / EOSDIS' : '&copy; OpenStreetMap contributors &copy; CARTO'
+      }).addTo(map);
+
       // Bring overlay layers to front
-      floodAreasLayer.bringToFront?.();
-      riversLayer.bringToFront?.();
+      floodAreasLayer?.bringToFront?.();
+      riversLayer?.bringToFront?.();
+
+      if (isNasa && typeof showToast === "function") {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        showToast(`🛰️ NASA GIBS Live Daily Satellite Layer Activated (Daily Pass: ${yesterday})`, "info");
+      }
     }
   });
 }
+
+// Live External API Sync Trigger
+window.triggerLiveMeteoSync = async function() {
+  const btn = document.getElementById("btn-sync-meteo");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span style="display:inline-block;width:10px;height:10px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;"></span> SYNCING...`;
+  }
+  try {
+    const res = await API.syncLiveData();
+    if (res.status === "success") {
+      if (typeof showToast === "function") {
+        showToast(`⚡ Live Meteo Synced: ${res.weather.station_rainfall_mm}mm rain | Periyar: ${res.hydrology.periyar_stage_meters}m (${res.source})`, "success");
+      }
+      const stageEl = document.querySelector(".map-telemetry-hud .telemetry-value");
+      if (stageEl && res.hydrology) {
+        stageEl.textContent = `${res.hydrology.periyar_stage_meters}m [LIVE SYNCED]`;
+      }
+      await loadAllMapLayers();
+    }
+  } catch (err) {
+    console.error("Live sync error:", err);
+    if (typeof showToast === "function") {
+      showToast("Telemetry buffered: Offline fallback active.", "warning");
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span style="width:7px;height:7px;background:#10B981;border-radius:50%;display:inline-block;"></span> SYNC LIVE METEO`;
+    }
+  }
+};
 
 // Load All 6 GeoJSON Layers
 async function loadAllMapLayers() {

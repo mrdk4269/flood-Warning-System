@@ -13,6 +13,7 @@ async function initAlertsPage() {
   await loadAlerts();
   setupAlertFilters();
   setupSimulationButton();
+  setupLiveWeatherButton();
 }
 
 async function loadAlerts() {
@@ -114,7 +115,33 @@ function setupSimulationButton() {
       simBtn.disabled = false;
       simBtn.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Simulate Live Sensor Spike
+        Simulate Spike Drill
+      `;
+    }
+  });
+}
+
+function setupLiveWeatherButton() {
+  const syncBtn = document.getElementById("btn-sync-live-weather");
+  if (!syncBtn) return;
+
+  syncBtn.addEventListener("click", async () => {
+    syncBtn.disabled = true;
+    syncBtn.innerHTML = `<span style="display:inline-block;width:12px;height:12px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;"></span> Connecting Open-Meteo...`;
+
+    try {
+      const res = await API.syncLiveData();
+      playEmergencyChime();
+      showToast(`Real-Time Meteo Synced: ${res.weather.station_rainfall_mm}mm rain | Periyar: ${res.hydrology.periyar_stage_meters}m (${res.source})`, "success");
+      await loadAlerts();
+      await updateNavAlertBadge();
+    } catch (err) {
+      showToast("Live weather sync failed. Check connection.", "error");
+    } finally {
+      syncBtn.disabled = false;
+      syncBtn.innerHTML = `
+        <span style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; display: inline-block;"></span>
+        Sync Live Weather (Open-Meteo)
       `;
     }
   });

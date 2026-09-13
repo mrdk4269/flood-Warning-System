@@ -78,9 +78,15 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
           <span>SPATIAL LAYERS & HUD</span>
         </div>
-        <button class="btn btn-sm btn-secondary" onclick="locateUser()" title="Acquire GPS Position" style="padding: 0.2rem 0.6rem; font-family: var(--font-mono);">
-          GPS LOCK
-        </button>
+        <div style="display: flex; gap: 0.35rem;">
+          <button id="btn-sync-meteo" class="btn btn-sm btn-primary" onclick="triggerLiveMeteoSync()" title="Fetch Real-Time Open-Meteo Weather & River Runoff" style="padding: 0.2rem 0.5rem; font-family: var(--font-mono); font-size: 0.72rem; display: flex; align-items: center; gap: 0.3rem;">
+            <span style="width: 7px; height: 7px; background: #10B981; border-radius: 50%; display: inline-block;"></span>
+            LIVE METEO
+          </button>
+          <button class="btn btn-sm btn-secondary" onclick="locateUser()" title="Acquire GPS Position" style="padding: 0.2rem 0.5rem; font-family: var(--font-mono); font-size: 0.72rem;">
+            GPS
+          </button>
+        </div>
       </div>
 
       <!-- Basemap Switcher Dropdown -->
@@ -88,7 +94,8 @@
         <label style="font-size: 0.7rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase;">Basemap Provider</label>
         <select id="basemap-select" class="form-select" style="padding: 0.35rem 0.6rem; font-size: 0.8rem; font-family: var(--font-mono); margin-top: 0.2rem;">
           <option value="dark" selected>Tactical Night Voyager (Dark)</option>
-          <option value="satellite">Esri World Imagery (Satellite)</option>
+          <option value="nasa">🛰️ NASA Earth Daily Satellite (Terra / Space)</option>
+          <option value="satellite">High-Res Satellite (Esri Imagery)</option>
           <option value="streets">OpenStreetMap Standard</option>
         </select>
       </div>

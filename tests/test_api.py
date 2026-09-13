@@ -109,5 +109,20 @@ class TestFloodGuard(unittest.TestCase):
         self.assertEqual(alerts_res.status_code, 200)
         self.assertIsInstance(alerts_res.get_json(), list)
 
+    def test_live_data_sync_and_status(self):
+        """Verify real-time external API sync and operational status."""
+        status_res = self.client.get("/api/live-status")
+        self.assertEqual(status_res.status_code, 200)
+        status_data = status_res.get_json()
+        self.assertEqual(status_data.get("status"), "online")
+        self.assertGreaterEqual(len(status_data.get("live_sources", [])), 2)
+
+        sync_res = self.client.post("/api/sync-live-data")
+        self.assertEqual(sync_res.status_code, 200)
+        sync_data = sync_res.get_json()
+        self.assertEqual(sync_data.get("status"), "success")
+        self.assertIn("weather", sync_data)
+        self.assertIn("hydrology", sync_data)
+
 if __name__ == "__main__":
     unittest.main()

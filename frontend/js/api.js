@@ -161,6 +161,18 @@ const API = {
     });
   },
 
+  // Sync Live Data from Open-Meteo & Satellite
+  async syncLiveData() {
+    return this.fetchJson("/api/sync-live-data", {
+      method: "POST"
+    });
+  },
+
+  // Get Live Telemetry and Satellite System Status
+  async getLiveStatus() {
+    return this.fetchJson("/api/live-status");
+  },
+
   // Admin Login
   async login(email, password) {
     return this.fetchJson("/api/auth/login", {

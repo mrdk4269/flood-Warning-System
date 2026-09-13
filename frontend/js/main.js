@@ -161,3 +161,17 @@ function showToast(message, type = "info") {
     setTimeout(() => toast.remove(), 300);
   }, 3500);
 }
+
+// Global Live Meteo & Satellite Sync Trigger
+window.triggerGlobalLiveSync = async function() {
+  const badge = document.getElementById("ticker-live-status");
+  if (badge) badge.textContent = "● SYNCING METEO...";
+  try {
+    const res = await API.syncLiveData();
+    if (badge) badge.textContent = "● LIVE METEO SYNCED";
+    showToast(`⚡ Real-Time Weather Synced: ${res.weather.station_rainfall_mm}mm Rain | Periyar: ${res.hydrology.periyar_stage_meters}m (${res.source})`, "success");
+    updateNavAlertBadge();
+  } catch (err) {
+    if (badge) badge.textContent = "● BUFFERED TELEMETRY";
+  }
+};
