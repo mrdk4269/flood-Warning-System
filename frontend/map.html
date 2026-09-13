@@ -71,6 +71,151 @@
   <div class="map-page-wrapper">
     <div id="map-container"></div>
 
+    <!-- Floating Map Mode Control Bar (Requirements #4, #6, #8) -->
+    <div class="map-mode-control-bar">
+      <div class="mode-toggle-group">
+        <button id="btn-mode-historical" class="mode-btn" onclick="setMapMode('HISTORICAL')" title="View Archived & Historical Flood Disasters">
+          <span>🏛️ Historical Data</span>
+        </button>
+        <button id="btn-mode-live" class="mode-btn active-live" onclick="setMapMode('LIVE')" title="View Verified Live Telemetry">
+          <span class="live-dot-pulse"></span>
+          <span>🟢 Live India Data</span>
+        </button>
+      </div>
+
+      <div class="mode-divider"></div>
+
+      <div class="mode-section">
+        <span class="hud-tag">BASIN:</span>
+        <select id="region-selector" class="select-mini" onchange="onRegionChange(this.value)">
+          <option value="odisha" selected>🇮🇳 Odisha (Mahanadi Basin)</option>
+          <option value="kerala">🇮🇳 Kerala (Periyar Basin)</option>
+          <option value="all">🇮🇳 All India Stations</option>
+        </select>
+      </div>
+
+      <div class="mode-divider"></div>
+
+      <div class="mode-section">
+        <span class="hud-tag">AUTO-REFRESH:</span>
+        <select id="auto-refresh-selector" class="select-mini" onchange="onAutoRefreshChange(this.value)">
+          <option value="0">Manual</option>
+          <option value="60">1 Min</option>
+          <option value="300" selected>5 Mins</option>
+          <option value="900">15 Mins</option>
+        </select>
+        <button class="btn btn-sm btn-primary" onclick="forceSyncLiveData()" title="Sync real-time data now" style="padding: 0.15rem 0.45rem; font-size: 0.68rem;">
+          ⚡ SYNC
+        </button>
+        <span id="refresh-timer-display" class="refresh-timer-val">05:00</span>
+      </div>
+
+      <div class="mode-divider"></div>
+
+      <button id="btn-toggle-drawer" class="btn btn-sm btn-secondary" onclick="toggleLiveDashboardDrawer()" style="padding: 0.2rem 0.6rem; font-size: 0.72rem; display: flex; align-items: center; gap: 0.35rem;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 9h3"/><path d="M15 15h3"/></svg>
+        <span>LIVE DASHBOARD</span>
+      </button>
+    </div>
+
+    <!-- Live Data Dashboard Drawer (Requirement #5 & #10) -->
+    <div id="live-dashboard-drawer" class="live-dashboard-drawer">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <div class="drawer-title">
+            <span class="live-dot-pulse"></span>
+            <span id="drawer-region-name">Odisha (Mahanadi River Basin)</span>
+          </div>
+          <div class="drawer-subtitle" id="drawer-last-updated">Updating live telemetry...</div>
+        </div>
+        <button class="drawer-close-btn" onclick="toggleLiveDashboardDrawer()" title="Close Drawer">✕</button>
+      </div>
+
+      <div class="drawer-content">
+        <!-- Subsystems Operational Status (Requirement #10) -->
+        <div class="subsystems-status-card">
+          <div style="font-size: 0.68rem; font-weight: 800; color: #FFFFFF; text-transform: uppercase; margin-bottom: 0.4rem; display: flex; justify-content: space-between;">
+            <span>LIVE DATA SUBSYSTEMS</span>
+            <span id="status-overall-badge" style="color: #34D399;">● OPERATIONAL</span>
+          </div>
+          <div class="subsystem-item">
+            <span style="color: var(--text-muted);">Rainfall (IMD/AWS):</span>
+            <span id="status-rainfall-val" class="status-badge-avail">● Available</span>
+          </div>
+          <div class="subsystem-item">
+            <span style="color: var(--text-muted);">Weather Conditions:</span>
+            <span id="status-weather-val" class="status-badge-avail">● Available</span>
+          </div>
+          <div class="subsystem-item">
+            <span style="color: var(--text-muted);">River Level (CWC):</span>
+            <span id="status-river-val" class="status-badge-avail">● Available</span>
+          </div>
+          <div class="subsystem-item">
+            <span style="color: var(--text-muted);">Flood Warning Engine:</span>
+            <span id="status-warning-val" class="status-badge-avail">● Available</span>
+          </div>
+          <div class="subsystem-item">
+            <span style="color: var(--text-muted);">Satellite Imagery:</span>
+            <span id="status-satellite-val" class="status-badge-avail">● Available (NASA/ISRO)</span>
+          </div>
+        </div>
+
+        <!-- Basin Macro KPIs -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <div class="metric-cell">
+            <div class="metric-label">Peak Downpour (24h)</div>
+            <div id="drawer-peak-rain" class="metric-value" style="color: #38BDF8;">-- mm</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-label">Max Risk Score</div>
+            <div id="drawer-max-risk" class="metric-value" style="color: #F59E0B;">-- / 100</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-label">Critical River Gauges</div>
+            <div id="drawer-critical-gauges" class="metric-value" style="color: #EF4444;">--</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-label">Active Warnings</div>
+            <div id="drawer-active-warnings" class="metric-value" style="color: #F87171;">--</div>
+          </div>
+        </div>
+
+        <!-- Monitored Stations Telemetry List -->
+        <div>
+          <div style="font-size: 0.72rem; font-weight: 800; color: #FFFFFF; text-transform: uppercase; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>STATION TELEMETRY FEED</span>
+            <span class="provenance-tag provenance-live">LIVE VERIFIED</span>
+          </div>
+          <div id="drawer-station-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Dual Map Legend (Requirement #14 & #20) -->
+    <div class="dual-map-legend tactical-box">
+      <div class="legend-header">
+        <span>DATA PROVENANCE KEY</span>
+      </div>
+      <div class="legend-row">
+        <span class="provenance-tag provenance-live">LIVE</span>
+        <span>Real-Time Ingestion</span>
+      </div>
+      <div class="legend-row">
+        <span class="provenance-tag provenance-historical">HIST</span>
+        <span>Archived Past Inundation</span>
+      </div>
+      <div class="legend-row">
+        <span class="provenance-tag provenance-forecast">FCST</span>
+        <span>Meteorological Model</span>
+      </div>
+      <div class="legend-row">
+        <span class="provenance-tag provenance-sample">DEMO</span>
+        <span>Offline Reference Data</span>
+      </div>
+    </div>
+
     <!-- Floating HUD Panel (Layer Controls, Basemap & Search) -->
     <div class="map-hud-panel tactical-box">
       <div class="map-hud-title">

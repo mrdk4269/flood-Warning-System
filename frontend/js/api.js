@@ -168,9 +168,40 @@ const API = {
     });
   },
 
-  // Get Live Telemetry and Satellite System Status
+  // Get Live Telemetry and Satellite System Status (Legacy route)
   async getLiveStatus() {
     return this.fetchJson("/api/live-status");
+  },
+
+  // Live India Flood Data System APIs (Requirements #5, #10, #11, #17)
+  async getLiveIndiaStatus() {
+    return this.fetchJson("/api/live-data/status");
+  },
+
+  async getLiveRainfall(region = "all") {
+    return this.fetchJson(`/api/live-data/rainfall?region=${encodeURIComponent(region)}`);
+  },
+
+  async getLiveWeather(region = "all") {
+    return this.fetchJson(`/api/live-data/weather?region=${encodeURIComponent(region)}`);
+  },
+
+  async getLiveRivers(region = "all") {
+    return this.fetchJson(`/api/live-data/rivers?region=${encodeURIComponent(region)}`);
+  },
+
+  async getLiveWarnings(region = "all") {
+    return this.fetchJson(`/api/live-data/flood-warnings?region=${encodeURIComponent(region)}`);
+  },
+
+  async getLiveDashboard(region = "all") {
+    return this.fetchJson(`/api/live-data/dashboard?region=${encodeURIComponent(region)}`);
+  },
+
+  async refreshLiveData(region = "all") {
+    return this.fetchJson(`/api/live-data/refresh?region=${encodeURIComponent(region)}`, {
+      method: "POST"
+    });
   },
 
   // Admin Login

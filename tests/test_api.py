@@ -124,5 +124,75 @@ class TestFloodGuard(unittest.TestCase):
         self.assertIn("weather", sync_data)
         self.assertIn("hydrology", sync_data)
 
+    def test_live_india_status_endpoint(self):
+        """Verify Requirement #10: Live Data Status subsystem health."""
+        res = self.client.get("/api/live-data/status")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("status"), "operational")
+        self.assertIn("subsystems", data)
+        subsystems = data["subsystems"]
+        self.assertIn("rainfall", subsystems)
+        self.assertIn("weather", subsystems)
+        self.assertIn("river_water_level", subsystems)
+        self.assertIn("flood_warning_engine", subsystems)
+        self.assertIn("satellite_imagery", subsystems)
+        self.assertTrue(data.get("overall_operational"))
+
+    def test_live_india_rainfall_endpoint(self):
+        """Verify Requirement #11 schema on live rainfall observation feed."""
+        res = self.client.get("/api/live-data/rainfall?region=odisha")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("status"), "success")
+        self.assertEqual(data.get("region"), "odisha")
+        self.assertGreater(data.get("count", 0), 0)
+        first = data["data"][0]
+        # Verify 9 core schema fields from Req #11
+        for key in ["data_type", "location", "latitude", "longitude", "value", "unit", "source", "provenance", "observation_time"]:
+            self.assertIn(key, first, f"Missing key {key} in Req #11 schema")
+        self.assertEqual(first["data_type"], "rainfall_24h")
+        self.assertEqual(first["unit"], "mm")
+        self.assertIn(first["provenance"], ["LIVE", "HISTORICAL_FALLBACK"])
+
+    def test_live_india_rivers_endpoint(self):
+        """Verify Requirement #11 schema on live river gauge observation feed."""
+        res = self.client.get("/api/live-data/rivers?region=odisha")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("status"), "success")
+        self.assertGreater(data.get("count", 0), 0)
+        first = data["data"][0]
+        self.assertEqual(first["data_type"], "river_water_level")
+        self.assertEqual(first["unit"], "m")
+        self.assertIn(first["provenance"], ["LIVE", "HISTORICAL_FALLBACK"])
+        self.assertIn("warning_level", first)
+        self.assertIn("danger_level", first)
+        self.assertIn("river_name", first)
+
+    def test_live_india_dashboard_endpoint(self):
+        """Verify Requirement #5: Live Data Dashboard for Odisha basin."""
+        res = self.client.get("/api/live-data/dashboard?region=odisha")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("status"), "success")
+        self.assertEqual(data.get("region"), "odisha")
+        self.assertIn("basin_summary", data)
+        self.assertIn("stations", data)
+        summary = data["basin_summary"]
+        self.assertIn("peak_rainfall_24h_mm", summary)
+        self.assertIn("critical_river_gauges", summary)
+        self.assertIn("active_flood_warnings", summary)
+        self.assertGreater(len(data["stations"]), 0)
+
+    def test_live_india_refresh_endpoint(self):
+        """Verify POST /api/live-data/refresh forces telemetry update."""
+        res = self.client.post("/api/live-data/refresh?region=odisha")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("status"), "success")
+        self.assertIn("dashboard", data)
+
 if __name__ == "__main__":
     unittest.main()
+

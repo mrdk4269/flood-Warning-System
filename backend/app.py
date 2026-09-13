@@ -11,6 +11,7 @@ from backend.database import get_connection, init_database, hash_password
 from backend.risk_calculator import calculate_flood_risk, update_config, CONFIG
 from backend.prediction import predict_flood
 from backend.data_service import LiveDataService
+from backend.live_india_service import LiveIndiaDataService
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
@@ -670,6 +671,83 @@ def get_live_status():
                 "cadence": "Indian Space Research Organisation"
             }
         ]
+    })
+
+# =============================================================================
+# REST API: UNIFIED LIVE INDIA FLOOD DATA SYSTEM (Requirements #5, #10, #11, #16, #17)
+# =============================================================================
+
+@app.route("/api/live-data/status", methods=["GET"])
+def api_live_data_status():
+    """Requirement #10 & #17: Operational health and availability of all 5 live subsystems."""
+    return jsonify(LiveIndiaDataService.get_live_status())
+
+@app.route("/api/live-data/rainfall", methods=["GET"])
+def api_live_data_rainfall():
+    """Requirement #11 & #17: Real-time rainfall observations with provenance and units."""
+    region = request.args.get("region")
+    records = LiveIndiaDataService.get_live_rainfall(region)
+    return jsonify({
+        "status": "success",
+        "region": region or "all",
+        "count": len(records),
+        "data": records
+    })
+
+@app.route("/api/live-data/weather", methods=["GET"])
+def api_live_data_weather():
+    """Requirement #11 & #17: Real-time atmospheric weather telemetry."""
+    region = request.args.get("region")
+    records = LiveIndiaDataService.get_live_weather(region)
+    return jsonify({
+        "status": "success",
+        "region": region or "all",
+        "count": len(records),
+        "data": records
+    })
+
+@app.route("/api/live-data/rivers", methods=["GET"])
+def api_live_data_rivers():
+    """Requirement #11 & #17: Real-time river stages, discharge rates, and danger levels."""
+    region = request.args.get("region")
+    records = LiveIndiaDataService.get_live_rivers(region)
+    return jsonify({
+        "status": "success",
+        "region": region or "all",
+        "count": len(records),
+        "data": records
+    })
+
+@app.route("/api/live-data/flood-warnings", methods=["GET"])
+def api_live_data_flood_warnings():
+    """Requirement #11 & #17: Real-time flood risk scores and active early warnings."""
+    region = request.args.get("region")
+    records = LiveIndiaDataService.get_live_flood_warnings(region)
+    return jsonify({
+        "status": "success",
+        "region": region or "all",
+        "count": len(records),
+        "data": records
+    })
+
+@app.route("/api/live-data/dashboard", methods=["GET"])
+def api_live_data_dashboard():
+    """Requirement #5: Consolidated payload for the Live Data Dashboard drawer."""
+    region = request.args.get("region")
+    return jsonify(LiveIndiaDataService.get_live_dashboard(region))
+
+@app.route("/api/live-data/refresh", methods=["POST"])
+def api_live_data_refresh():
+    """Requirement #8: Force real-time refresh bypassing TTL cache."""
+    region = request.args.get("region")
+    data = LiveIndiaDataService.sync_and_cache_live_observations(region, force_refresh=True)
+    dash = LiveIndiaDataService.get_live_dashboard(region)
+    return jsonify({
+        "status": "success",
+        "message": "Live telemetry refreshed from external APIs",
+        "refreshed_stations": len(data),
+        "dashboard": dash,
+        "timestamp": datetime.now().isoformat()
     })
 
 # =============================================================================

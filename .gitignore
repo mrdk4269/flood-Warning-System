@@ -27,6 +27,8 @@ ENV/
 
 # Database
 database/*.db
+database/*.db-journal
+database/*.db-wal
 
 # IDE & OS
 .vscode/

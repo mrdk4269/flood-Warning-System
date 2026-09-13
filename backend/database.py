@@ -135,6 +135,26 @@ def init_database():
         evacuated_persons INTEGER DEFAULT 0,
         description TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS live_observations_cache (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        data_type TEXT NOT NULL,
+        location TEXT NOT NULL,
+        district TEXT,
+        state TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        value REAL,
+        unit TEXT NOT NULL,
+        source TEXT NOT NULL,
+        provenance TEXT DEFAULT 'LIVE',
+        status TEXT DEFAULT 'AVAILABLE',
+        error_reason TEXT,
+        observation_time TEXT,
+        last_updated_time TEXT,
+        extra_json TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     """)
     conn.commit()
 
