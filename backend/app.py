@@ -30,30 +30,71 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
+def _get_or_create_secret_key():
+    env_key = os.environ.get("FLOODGUARD_SECRET_KEY")
+    if env_key:
+        return env_key
+    secret_file = os.path.join(DATA_DIR, ".flask_secret")
+    try:
+        if os.path.exists(secret_file):
+            with open(secret_file, "r", encoding="utf-8") as f:
+                key = f.read().strip()
+                if key:
+                    return key
+        new_key = os.urandom(32).hex()
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(secret_file, "w", encoding="utf-8") as f:
+            f.write(new_key)
+        return new_key
+    except Exception:
+        return "floodguard-dev-static-session-secret-2026"
+
 app = Flask(__name__, static_folder=FRONTEND_DIR)
 app.config.update(
-    SECRET_KEY=os.environ.get("FLOODGUARD_SECRET_KEY") or os.urandom(32),
+    SECRET_KEY=_get_or_create_secret_key(),
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
 )
 
-# The frontend is served by this application; do not expose privileged APIs cross-origin.
+# CORS headers: allow same-origin and local development ports
 @app.after_request
 def add_cors_headers(response):
     origin = request.headers.get("Origin")
-    if origin and origin == request.host_url.rstrip("/"):
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Vary"] = "Origin"
+    if origin:
+        if (origin == request.host_url.rstrip("/") or
+            origin.startswith("http://localhost:") or
+            origin.startswith("http://127.0.0.1:") or
+            origin in {"http://localhost", "http://127.0.0.1"}):
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Vary"] = "Origin"
     return response
 
 
 @app.before_request
 def protect_mutating_endpoints():
-    """Require an authenticated administrator for every state-changing API call."""
+    """
+    Require an authenticated administrator for administrative data mutation.
+    Public calculation, prediction, simulation, and auth endpoints are permitted for all users.
+    """
     if request.method not in {"POST", "PUT", "DELETE", "PATCH"}:
         return None
-    if request.path in {"/api/auth/login", "/api/auth/logout"}:
+    
+    # Whitelist public non-mutating or citizen calculation endpoints
+    public_endpoints = {
+        "/api/auth/login",
+        "/api/auth/logout",
+        "/api/calculate-risk",
+        "/api/predict-flood",
+        "/api/live-data/refresh",
+        "/api/simulate-tick",
+        "/api/sync-live-data"
+    }
+    if request.path in public_endpoints:
         return None
+
     if not request.path.startswith("/api/"):
         return None
     if session.get("role") != "admin":
@@ -428,6 +469,54 @@ def handle_safe_locations():
         conn.close()
         return jsonify({"message": "Safe location created", "id": new_id}), 201
 
+@app.route("/api/safe-locations/<int:location_id>", methods=["GET", "PUT", "DELETE"])
+def handle_safe_location_item(location_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    if request.method == "GET":
+        cursor.execute("SELECT * FROM safe_locations WHERE id = ?", (location_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return jsonify({"error": "Safe location not found"}), 404
+        return jsonify(dict(row))
+
+    elif request.method == "PUT":
+        data = request.json or {}
+        cursor.execute("""
+            UPDATE safe_locations
+            SET location_name = COALESCE(?, location_name),
+                type = COALESCE(?, type),
+                latitude = COALESCE(?, latitude),
+                longitude = COALESCE(?, longitude),
+                capacity = COALESCE(?, capacity),
+                current_occupancy = COALESCE(?, current_occupancy),
+                contact = COALESCE(?, contact),
+                address = COALESCE(?, address),
+                status = COALESCE(?, status)
+            WHERE id = ?
+        """, (
+            data.get("location_name"),
+            data.get("type"),
+            float(data["latitude"]) if "latitude" in data and data["latitude"] is not None else None,
+            float(data["longitude"]) if "longitude" in data and data["longitude"] is not None else None,
+            int(data["capacity"]) if "capacity" in data and data["capacity"] is not None else None,
+            int(data["current_occupancy"]) if "current_occupancy" in data and data["current_occupancy"] is not None else None,
+            data.get("contact"),
+            data.get("address"),
+            data.get("status"),
+            location_id
+        ))
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Safe location updated"})
+
+    elif request.method == "DELETE":
+        cursor.execute("DELETE FROM safe_locations WHERE id = ?", (location_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Safe location removed"})
+
 # =============================================================================
 # REST API: HOSPITALS
 # =============================================================================
@@ -464,6 +553,56 @@ def handle_hospitals():
         new_id = cursor.lastrowid
         conn.close()
         return jsonify({"message": "Hospital recorded", "id": new_id}), 201
+
+@app.route("/api/hospitals/<int:hospital_id>", methods=["GET", "PUT", "DELETE"])
+def handle_hospital_item(hospital_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    if request.method == "GET":
+        cursor.execute("SELECT * FROM hospitals WHERE id = ?", (hospital_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return jsonify({"error": "Hospital not found"}), 404
+        return jsonify(dict(row))
+
+    elif request.method == "PUT":
+        data = request.json or {}
+        cursor.execute("""
+            UPDATE hospitals
+            SET hospital_name = COALESCE(?, hospital_name),
+                latitude = COALESCE(?, latitude),
+                longitude = COALESCE(?, longitude),
+                address = COALESCE(?, address),
+                emergency_availability = COALESCE(?, emergency_availability),
+                total_beds = COALESCE(?, total_beds),
+                available_beds = COALESCE(?, available_beds),
+                contact = COALESCE(?, contact),
+                ambulance_helpline = COALESCE(?, ambulance_helpline),
+                status = COALESCE(?, status)
+            WHERE id = ?
+        """, (
+            data.get("hospital_name"),
+            float(data["latitude"]) if "latitude" in data and data["latitude"] is not None else None,
+            float(data["longitude"]) if "longitude" in data and data["longitude"] is not None else None,
+            data.get("address"),
+            data.get("emergency_availability"),
+            int(data["total_beds"]) if "total_beds" in data and data["total_beds"] is not None else None,
+            int(data["available_beds"]) if "available_beds" in data and data["available_beds"] is not None else None,
+            data.get("contact"),
+            data.get("ambulance_helpline"),
+            data.get("status"),
+            hospital_id
+        ))
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Hospital updated"})
+
+    elif request.method == "DELETE":
+        cursor.execute("DELETE FROM hospitals WHERE id = ?", (hospital_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Hospital removed"})
 
 # =============================================================================
 # REST API: RIVERS
@@ -617,6 +756,9 @@ def calculate_risk_api():
         elevation = float(data.get("elevation", 8.0))
         distance_from_river = float(data.get("distance_from_river", data.get("distance_to_river", 200.0)))
 
+        if rainfall < 0 or river_level < 0 or elevation < -50 or distance_from_river < 0:
+            return jsonify({"error": "Numerical inputs cannot be negative (elevation minimum -50m)."}), 400
+
         result = calculate_flood_risk(
             rainfall=rainfall,
             river_level=river_level,
@@ -651,6 +793,9 @@ def predict_flood_api():
         distance = float(data.get("distance_from_river", 250.0))
         hist = data.get("historical_flood_risk", data.get("flood_history", "Moderate"))
 
+        if rainfall < 0 or river_level < 0 or elevation < -50 or distance < 0:
+            return jsonify({"error": "Numerical inputs cannot be negative (elevation minimum -50m)."}), 400
+
         res = predict_flood(
             location=location,
             rainfall=rainfall,
@@ -663,6 +808,50 @@ def predict_flood_api():
         return jsonify(res)
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+# =============================================================================
+# REST API: DATA EXPORT (CSV / JSON)
+# =============================================================================
+
+@app.route("/api/export/<dataset>", methods=["GET"])
+def export_dataset(dataset):
+    """Export datasets as CSV or JSON for disaster management and reporting."""
+    fmt = request.args.get("format", "csv").lower()
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    table_map = {
+        "flood-areas": ("flood_areas", ["id", "area_name", "district", "latitude", "longitude", "risk_level", "rainfall", "water_level", "elevation", "distance_to_river"]),
+        "alerts": ("alerts", ["id", "title", "risk_level", "district", "message", "status", "created_at"]),
+        "safe-locations": ("safe_locations", ["id", "location_name", "type", "latitude", "longitude", "capacity", "current_occupancy", "contact", "status"]),
+        "hospitals": ("hospitals", ["id", "hospital_name", "latitude", "longitude", "total_beds", "available_beds", "contact", "status"]),
+        "rivers": ("river_data", ["id", "river_name", "water_level", "warning_level", "danger_level", "status", "last_updated"])
+    }
+
+    if dataset not in table_map:
+        conn.close()
+        return jsonify({"error": f"Invalid dataset: {dataset}. Valid datasets: {', '.join(table_map.keys())}"}), 404
+
+    tbl, cols = table_map[dataset]
+    cursor.execute(f"SELECT {', '.join(cols)} FROM {tbl}")
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+
+    if fmt == "json":
+        return jsonify(rows)
+
+    import io
+    import csv
+    from flask import Response
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=cols)
+    writer.writeheader()
+    writer.writerows(rows)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment;filename=floodguard_{dataset}.csv"}
+    )
 
 # =============================================================================
 # REST API: LIVE TELEMETRY TICK & SIMULATION

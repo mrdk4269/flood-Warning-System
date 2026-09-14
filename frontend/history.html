@@ -291,6 +291,19 @@
     }
 
     function renderChart(records) {
+      if (typeof Chart === "undefined") {
+        const chartWrapper = document.getElementById("floodHistoryChart")?.parentElement;
+        if (chartWrapper) {
+          chartWrapper.innerHTML = `
+            <div style="text-align:center; padding: 2.5rem; color: var(--text-muted);">
+              <p>📊 Historical trend chart unavailable (Chart.js library offline).</p>
+              <p style="font-size:0.8rem; margin-top:0.4rem;">Historical tabular records are fully preserved in the table below.</p>
+            </div>
+          `;
+        }
+        return;
+      }
+
       const ctx = document.getElementById("floodHistoryChart")?.getContext("2d");
       if (!ctx) return;
 

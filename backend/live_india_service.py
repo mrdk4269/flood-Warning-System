@@ -1047,12 +1047,15 @@ class LiveIndiaDataService:
                     ))
 
                 # FG-021: Enforce retention limit — keep only last 500 rows per data_type
-                cursor.execute("""
-                    DELETE FROM live_observations_cache
-                    WHERE id NOT IN (
-                        SELECT id FROM live_observations_cache ORDER BY id DESC LIMIT 1000
-                    )
-                """)
+                for dtype in ("rainfall", "river_level", "flood_warning"):
+                    cursor.execute("""
+                        DELETE FROM live_observations_cache
+                        WHERE data_type = ? AND id NOT IN (
+                            SELECT id FROM live_observations_cache
+                            WHERE data_type = ?
+                            ORDER BY id DESC LIMIT 500
+                        )
+                    """, (dtype, dtype))
 
                 conn.commit()
                 conn.close()

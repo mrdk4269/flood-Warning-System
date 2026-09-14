@@ -271,7 +271,7 @@
               <div style="font-size: 0.72rem; font-family: var(--font-mono); color: #94A3B8; font-weight: 700; text-transform: uppercase; margin-bottom: 0.4rem;">
                 FEATURE WEIGHT IMPORTANCE
               </div>
-              <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.75rem;">
+              <div id="ml-feature-weights-container" style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.75rem;">
                 <div>
                   <div style="display: flex; justify-content: space-between; margin-bottom: 0.15rem;">
                     <span>Rainfall Precipitation (24h)</span>
@@ -330,6 +330,50 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
+      // Dynamically populate location dropdown from verified database areas & states
+      async function populatePredictionLocations() {
+        try {
+          const select = document.getElementById("pred-location");
+          const [statesRes, areasRes] = await Promise.all([
+            API.getIndiaStates().catch(() => null),
+            API.getFloodAreas().catch(() => null)
+          ]);
+          const optGroupCurated = document.createElement("optgroup");
+          optGroupCurated.label = "Monitored River Basins & Floodplains";
+
+          if (Array.isArray(areasRes) && areasRes.length > 0) {
+            areasRes.forEach(a => {
+              const opt = document.createElement("option");
+              opt.value = `${a.area_name} (${a.district || ''})`;
+              opt.textContent = `${a.area_name} (${a.district || ''})`;
+              optGroupCurated.appendChild(opt);
+            });
+          }
+
+          const optGroupStates = document.createElement("optgroup");
+          optGroupStates.label = "States & Flood Prone Districts";
+          if (statesRes && statesRes.states) {
+            statesRes.states.forEach(s => {
+              (s.flood_prone_districts || []).forEach(d => {
+                const opt = document.createElement("option");
+                opt.value = `${d} District, ${s.state_name}`;
+                opt.textContent = `${d} District, ${s.state_name}`;
+                optGroupStates.appendChild(opt);
+              });
+            });
+          }
+
+          if (optGroupCurated.children.length > 0 || optGroupStates.children.length > 0) {
+            select.innerHTML = "";
+            if (optGroupCurated.children.length > 0) select.appendChild(optGroupCurated);
+            if (optGroupStates.children.length > 0) select.appendChild(optGroupStates);
+          }
+        } catch (e) {
+          console.warn("Failed to dynamically populate prediction locations:", e);
+        }
+      }
+      populatePredictionLocations();
+
       const form = document.getElementById("prediction-form");
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -365,9 +409,33 @@
           document.getElementById("rule-level-display").textContent = `${res.method_1_rule_based.risk_level} (${res.method_1_rule_based.score}/100)`;
           document.getElementById("ml-level-display").textContent = `${res.method_2_machine_learning.decision_tree_level} Risk Class`;
 
+          // Dynamically update feature weights
+          const featImportances = res.method_2_machine_learning?.feature_importance;
+          if (featImportances && typeof featImportances === "object") {
+            const weightsContainer = document.getElementById("ml-feature-weights-container");
+            if (weightsContainer) {
+              const colors = ["#38BDF8", "#06B6D4", "#F59E0B", "#10B981", "#8B5CF6"];
+              weightsContainer.innerHTML = Object.entries(featImportances).map(([name, pctStr], idx) => {
+                const pctVal = parseFloat(pctStr) || 0;
+                const barColor = colors[idx % colors.length];
+                return `
+                  <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.15rem;">
+                      <span>${escapeHtml(name)}</span>
+                      <span class="mono">${pctStr}</span>
+                    </div>
+                    <div style="height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px;">
+                      <div style="width: ${pctVal}%; height: 100%; background: ${barColor};"></div>
+                    </div>
+                  </div>
+                `;
+              }).join("");
+            }
+          }
+
           showToast("Flood Forecast updated!", "success");
         } catch (err) {
-          showToast("Prediction update failed.", "error");
+          showToast("Prediction update failed: " + (err.message || "Server error"), "error");
         } finally {
           btn.disabled = false;
           btn.innerHTML = `

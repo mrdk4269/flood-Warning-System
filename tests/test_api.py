@@ -375,6 +375,83 @@ class TestFloodGuard(unittest.TestCase):
         res_admin = unauthed_client.get("/admin", follow_redirects=False)
         self.assertIn(res_admin.status_code, [302, 401])
 
+    def test_public_calculation_endpoints_unauthenticated(self):
+        """Verify public calculation/prediction endpoints allow unauthenticated citizen access (HTTP 200)."""
+        unauthed_client = app.test_client()
+        # 1. Calculate risk
+        res_calc = unauthed_client.post("/api/calculate-risk", json={
+            "rainfall": 65.0,
+            "river_level": 6.0,
+            "elevation": 10.0,
+            "distance_from_river": 300.0
+        })
+        self.assertEqual(res_calc.status_code, 200)
+        self.assertIn("risk_score", res_calc.get_json())
+
+        # 2. Predict flood
+        res_pred = unauthed_client.post("/api/predict-flood", json={
+            "location": "Public Test Basin",
+            "rainfall": 80.0,
+            "river_level": 7.0,
+            "elevation": 8.0,
+            "distance_from_river": 200.0
+        })
+        self.assertEqual(res_pred.status_code, 200)
+        self.assertIn("flood_probability", res_pred.get_json())
+
+    def test_input_validation_bounds(self):
+        """Verify negative inputs to calculate-risk and predict-flood return HTTP 400."""
+        res_neg = self.client.post("/api/calculate-risk", json={"rainfall": -20.0, "river_level": 5.0})
+        self.assertEqual(res_neg.status_code, 400)
+        self.assertIn("error", res_neg.get_json())
+
+        res_neg_pred = self.client.post("/api/predict-flood", json={"rainfall": 50.0, "river_level": -2.0})
+        self.assertEqual(res_neg_pred.status_code, 400)
+        self.assertIn("error", res_neg_pred.get_json())
+
+    def test_safe_locations_and_hospitals_crud(self):
+        """Verify PUT and DELETE for safe locations and hospitals."""
+        # 1. Safe location CRUD
+        res_create_loc = self.client.post("/api/safe-locations", json={
+            "location_name": "Test Cyclone Shelter",
+            "type": "Emergency Shelter",
+            "latitude": 20.2,
+            "longitude": 85.8,
+            "capacity": 300
+        })
+        self.assertEqual(res_create_loc.status_code, 201)
+        loc_id = res_create_loc.get_json()["id"]
+
+        res_update_loc = self.client.put(f"/api/safe-locations/{loc_id}", json={"status": "FULL"})
+        self.assertEqual(res_update_loc.status_code, 200)
+
+        res_del_loc = self.client.delete(f"/api/safe-locations/{loc_id}")
+        self.assertEqual(res_del_loc.status_code, 200)
+
+        # 2. Hospital CRUD
+        res_create_hosp = self.client.post("/api/hospitals", json={
+            "hospital_name": "Test Emergency Hospital",
+            "latitude": 20.3,
+            "longitude": 85.9,
+            "total_beds": 80,
+            "available_beds": 25
+        })
+        self.assertEqual(res_create_hosp.status_code, 201)
+        hosp_id = res_create_hosp.get_json()["id"]
+
+        res_update_hosp = self.client.put(f"/api/hospitals/{hosp_id}", json={"available_beds": 10})
+        self.assertEqual(res_update_hosp.status_code, 200)
+
+        res_del_hosp = self.client.delete(f"/api/hospitals/{hosp_id}")
+        self.assertEqual(res_del_hosp.status_code, 200)
+
+    def test_dataset_export_csv(self):
+        """Verify CSV export endpoint returns valid CSV attachments."""
+        res = self.client.get("/api/export/flood-areas?format=csv")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("text/csv", res.headers.get("Content-Type", ""))
+        self.assertIn("area_name", res.get_data(as_text=True))
+
 if __name__ == "__main__":
     unittest.main()
 

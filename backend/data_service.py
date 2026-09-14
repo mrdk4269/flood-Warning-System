@@ -98,12 +98,19 @@ class LiveDataService:
             }
 
         rain_val = max(weather_data.get("daily_rain_sum", 0.0) or 0.0, weather_data.get("precipitation", 0.0) or 0.0)
-        # Ensure a sensible operational baseline for stations
-        station_rain_baseline = rain_val if rain_val > 5.0 else round(random.uniform(25.0, 72.0), 1)
+        station_rain_baseline = rain_val if rain_val > 5.0 else 25.0
         discharge_val = flood_data.get("current_discharge", 4.0)
 
         # Compute realistic river stage (meters) from discharge rate (m3/s)
         calculated_river_stage = round(3.5 + (discharge_val ** 0.45) * 1.8, 2)
+
+        # Cross-reference live station observations from LiveIndiaDataService
+        live_telemetry_map = {}
+        try:
+            from backend.live_india_service import LiveIndiaDataService
+            live_telemetry_map = LiveIndiaDataService.get_live_station_telemetry_map()
+        except Exception:
+            live_telemetry_map = {}
 
         conn = get_connection()
         cursor = conn.cursor()
@@ -112,7 +119,18 @@ class LiveDataService:
         cursor.execute("SELECT id, location FROM rainfall_data")
         stations = cursor.fetchall()
         for st in stations:
-            st_rain = round(max(5.0, station_rain_baseline * random.uniform(0.85, 1.25)), 1)
+            loc_name = st["location"] or ""
+            matched_live = None
+            for key, val in live_telemetry_map.items():
+                if loc_name and (loc_name.lower() in key[0].lower() or loc_name.lower() in key[1].lower()):
+                    matched_live = val
+                    break
+
+            if matched_live and matched_live.get("rainfall") is not None:
+                st_rain = round(float(matched_live["rainfall"]), 1)
+            else:
+                st_rain = round(max(5.0, station_rain_baseline), 1)
+
             intensity = "Extremely Heavy" if st_rain > 120 else ("Heavy" if st_rain > 75 else ("Moderate" if st_rain > 30 else "Light"))
             cursor.execute("""
                 UPDATE rainfall_data 
@@ -124,7 +142,18 @@ class LiveDataService:
         cursor.execute("SELECT id, river_name, warning_level, danger_level FROM river_data")
         rivers = cursor.fetchall()
         for riv in rivers:
-            riv_level = round(calculated_river_stage * random.uniform(0.9, 1.05), 2)
+            r_name = riv["river_name"] or ""
+            matched_live = None
+            for key, val in live_telemetry_map.items():
+                if r_name and (r_name.lower() in str(val.get("river_name", "")).lower() or r_name.lower() in key[0].lower() or r_name.lower() in key[1].lower()):
+                    matched_live = val
+                    break
+
+            if matched_live and matched_live.get("water_level") is not None:
+                riv_level = round(float(matched_live["water_level"]), 2)
+            else:
+                riv_level = round(calculated_river_stage, 2)
+
             status = "DANGER" if riv_level >= riv["danger_level"] else ("WARNING" if riv_level >= riv["warning_level"] else "NORMAL")
             cursor.execute("""
                 UPDATE river_data
@@ -136,8 +165,23 @@ class LiveDataService:
         cursor.execute("SELECT id, area_name, elevation, distance_to_river FROM flood_areas")
         areas = cursor.fetchall()
         for fa in areas:
-            fa_rain = round(station_rain_baseline * random.uniform(0.9, 1.15), 1)
-            fa_water = round(calculated_river_stage * random.uniform(0.9, 1.05), 2)
+            a_name = fa["area_name"] or ""
+            matched_live = None
+            for key, val in live_telemetry_map.items():
+                if a_name and (a_name.lower() in key[0].lower() or a_name.lower() in key[1].lower()):
+                    matched_live = val
+                    break
+
+            if matched_live and matched_live.get("rainfall") is not None:
+                fa_rain = round(float(matched_live["rainfall"]), 1)
+            else:
+                fa_rain = round(station_rain_baseline, 1)
+
+            if matched_live and matched_live.get("water_level") is not None:
+                fa_water = round(float(matched_live["water_level"]), 2)
+            else:
+                fa_water = round(calculated_river_stage, 2)
+
             risk_eval = calculate_flood_risk(
                 rainfall=fa_rain,
                 river_level=fa_water,

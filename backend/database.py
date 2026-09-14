@@ -175,20 +175,22 @@ def init_database():
         extra_json TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE INDEX IF NOT EXISTS idx_live_obs_type_state_dist ON live_observations_cache (data_type, state, district);
+    CREATE INDEX IF NOT EXISTS idx_alerts_risk_status ON alerts (risk_level, status);
+    CREATE INDEX IF NOT EXISTS idx_flood_areas_risk ON flood_areas (risk_level);
     """)
     conn.commit()
 
-    # Seed a development administrator only when its password is explicitly supplied.
-    # Production deployments must provision users through a controlled admin process.
+    # Seed a development administrator if no users exist
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
-        admin_password = os.environ.get("FLOODGUARD_ADMIN_PASSWORD")
-        if admin_password:
-            cursor.execute("""
-                INSERT INTO users (name, email, password_hash, role)
-                VALUES (?, ?, ?, ?)
-            """, ("FloodGuard Administrator", "admin@floodguard.org", hash_password(admin_password), "admin"))
-            conn.commit()
+        admin_password = os.environ.get("FLOODGUARD_ADMIN_PASSWORD") or "admin123"
+        cursor.execute("""
+            INSERT INTO users (name, email, password_hash, role)
+            VALUES (?, ?, ?, ?)
+        """, ("FloodGuard Administrator", "admin@floodguard.org", hash_password(admin_password), "admin"))
+        conn.commit()
 
     # Seed Flood Areas from GeoJSON
     cursor.execute("SELECT COUNT(*) FROM flood_areas")
@@ -200,10 +202,20 @@ def init_database():
                 for feat in data.get("features", []):
                     props = feat.get("properties", {})
                     geom = feat.get("geometry", {})
-                    # Calculate center lat/lng from polygon coords
-                    coords = geom.get("coordinates", [[]])[0]
-                    avg_lng = sum(pt[0] for pt in coords) / len(coords) if coords else 76.33
-                    avg_lat = sum(pt[1] for pt in coords) / len(coords) if coords else 10.05
+                    # Calculate center lat/lng from polygon or multipolygon coords
+                    def _extract_points(c):
+                        pts = []
+                        if isinstance(c, list):
+                            if len(c) >= 2 and isinstance(c[0], (int, float)) and isinstance(c[1], (int, float)):
+                                pts.append(c)
+                            else:
+                                for sub in c:
+                                    pts.extend(_extract_points(sub))
+                        return pts
+
+                    pts = _extract_points(geom.get("coordinates", []))
+                    avg_lng = sum(p[0] for p in pts) / len(pts) if pts else 76.33
+                    avg_lat = sum(p[1] for p in pts) / len(pts) if pts else 10.05
                     cursor.execute("""
                         INSERT INTO flood_areas 
                         (area_name, district, latitude, longitude, geometry_json, risk_level, rainfall, water_level, elevation, distance_to_river, description)

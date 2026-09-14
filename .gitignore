@@ -36,3 +36,5 @@ database/*.db-wal
 .DS_Store
 Thumbs.db
 graphify-out/
+data/.flask_secret
+*.secret

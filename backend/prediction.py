@@ -191,11 +191,11 @@ def predict_flood(
                 "Critical": round(class_probs.get(3, 0.0) * 100, 1)
             },
             "feature_importance": {
-                "Rainfall": "34.2%",
-                "River Water Level": "31.8%",
-                "Elevation Topography": "15.4%",
-                "Distance to River": "11.1%",
-                "Historical Recurrence": "7.5%"
+                name: f"{round(val * 100, 1)}%"
+                for name, val in zip(
+                    ["Rainfall", "River Water Level", "Elevation Topography", "Distance to River", "Historical Recurrence"],
+                    getattr(rf, "feature_importances_", [0.342, 0.318, 0.154, 0.111, 0.075])
+                )
             }
         }
     }

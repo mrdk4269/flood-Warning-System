@@ -502,15 +502,35 @@
       drawCurrentRoute();
     }
 
-    function drawCurrentRoute() {
+    async function drawCurrentRoute() {
       const originParts = document.getElementById("route-origin").value.split(",").map(Number);
       const destParts = document.getElementById("route-dest").value.split(",").map(Number);
 
       const oLat = originParts[0], oLng = originParts[1];
       const dLat = destParts[0], dLng = destParts[1];
 
-      const distKm = calcDistanceKm(oLat, oLng, dLat, dLng);
-      document.getElementById("route-distance-badge").textContent = `DISTANCE: ${distKm} KM`;
+      let distKm = calcDistanceKm(oLat, oLng, dLat, dLng);
+      let routePoints = [[oLat, oLng], [dLat, dLng]];
+      let isRoadRoute = false;
+
+      // Try fetching authentic road navigation from OpenStreetMap OSRM
+      try {
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${oLng},${oLat};${dLng},${dLat}?overview=full&geometries=geojson`;
+        const res = await fetch(osrmUrl, { signal: AbortSignal.timeout(3500) });
+        if (res.ok) {
+          const osrmData = await res.json();
+          if (osrmData.routes && osrmData.routes.length > 0) {
+            const r = osrmData.routes[0];
+            distKm = (r.distance / 1000).toFixed(1);
+            routePoints = r.geometry.coordinates.map(c => [c[1], c[0]]);
+            isRoadRoute = true;
+          }
+        }
+      } catch (err) {
+        // Fallback gracefully to direct geodesic line
+      }
+
+      document.getElementById("route-distance-badge").textContent = `DISTANCE: ${distKm} KM${isRoadRoute ? " (ROAD)" : " (DIRECT)"}`;
 
       const walkMins = Math.max(2, Math.round((distKm / 4.5) * 60));
       const driveMins = Math.max(1, Math.round((distKm / 25.0) * 60));
@@ -522,15 +542,11 @@
       if (originMarker) routeMap.removeLayer(originMarker);
       if (destMarker) routeMap.removeLayer(destMarker);
 
-      const midLat = (oLat + dLat) / 2 + 0.003;
-      const midLng = (oLng + dLng) / 2 - 0.002;
-      const routePoints = [[oLat, oLng], [midLat, midLng], [dLat, dLng]];
-
       routeLine = L.polyline(routePoints, {
-        color: "#38BDF8",
+        color: isRoadRoute ? "#10B981" : "#38BDF8",
         weight: 5,
         opacity: 0.9,
-        dashArray: "8, 8"
+        dashArray: isRoadRoute ? null : "8, 8"
       }).addTo(routeMap);
 
       originMarker = L.circleMarker([oLat, oLng], {

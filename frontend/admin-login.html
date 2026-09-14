@@ -31,6 +31,13 @@
   </main>
   <script src="/js/api.js"></script>
   <script>
+    // Auto-redirect if already logged in as administrator
+    API.getAuthStatus().then(status => {
+      if (status && status.authenticated && status.role === 'admin') {
+        window.location.assign('/admin');
+      }
+    }).catch(() => {});
+
     document.getElementById('admin-login-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const error = document.getElementById('login-error');

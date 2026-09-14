@@ -97,6 +97,10 @@ const API = {
     return this.fetchJson("/api/safe-locations");
   },
 
+  async getSafeLocation(id) {
+    return this.fetchJson(`/api/safe-locations/${id}`);
+  },
+
   async createSafeLocation(data) {
     return this.fetchJson("/api/safe-locations", {
       method: "POST",
@@ -104,9 +108,26 @@ const API = {
     });
   },
 
+  async updateSafeLocation(id, data) {
+    return this.fetchJson(`/api/safe-locations/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteSafeLocation(id) {
+    return this.fetchJson(`/api/safe-locations/${id}`, {
+      method: "DELETE"
+    });
+  },
+
   // Hospitals
   async getHospitals() {
     return this.fetchJson("/api/hospitals");
+  },
+
+  async getHospital(id) {
+    return this.fetchJson(`/api/hospitals/${id}`);
   },
 
   async createHospital(data) {
@@ -116,15 +137,41 @@ const API = {
     });
   },
 
+  async updateHospital(id, data) {
+    return this.fetchJson(`/api/hospitals/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteHospital(id) {
+    return this.fetchJson(`/api/hospitals/${id}`, {
+      method: "DELETE"
+    });
+  },
+
   // Rivers
   async getRivers() {
     return this.fetchJson("/api/rivers");
+  },
+
+  async createRiver(data) {
+    return this.fetchJson("/api/rivers", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
   },
 
   async updateRiver(id, data) {
     return this.fetchJson(`/api/rivers/${id}`, {
       method: "PUT",
       body: JSON.stringify(data)
+    });
+  },
+
+  async deleteRiver(id) {
+    return this.fetchJson(`/api/rivers/${id}`, {
+      method: "DELETE"
     });
   },
 

@@ -65,8 +65,29 @@ function renderAlertCards(alerts) {
   } else if (currentFilter === "HIGH") {
     filtered = sorted.filter(a => a.risk_level.toUpperCase() === "HIGH");
   } else if (currentFilter === "NEARBY") {
-    // Show top nearby or priority alerts if GPS not available
-    filtered = sorted.slice(0, 4);
+    if (userCoords && Array.isArray(userCoords) && userCoords.length === 2) {
+      function haversineDistKm(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      filtered = [...sorted].map(a => {
+        let aLat = a.latitude;
+        let aLng = a.longitude;
+        if (aLat == null || aLng == null) {
+          aLat = 22.0; aLng = 80.0;
+        }
+        const distKm = haversineDistKm(userCoords[0], userCoords[1], aLat, aLng);
+        return { ...a, distance_km: Math.round(distKm) };
+      }).sort((a, b) => a.distance_km - b.distance_km);
+    } else {
+      filtered = sorted.slice(0, 4);
+    }
   }
 
   if (filtered.length === 0) {
@@ -88,6 +109,7 @@ function renderAlertCards(alerts) {
     const badgeCls = isCrit ? "badge-critical" : (isHigh ? "badge-high" : (lvl === "MEDIUM" ? "badge-medium" : "badge-low"));
     const riskColor = isCrit ? "#EF4444" : (isHigh ? "#F97316" : (lvl === "MEDIUM" ? "#F59E0B" : "#10B981"));
     const floodWindow = isCrit ? "Next 2–4 Hours" : (isHigh ? "Next 4–6 Hours" : "Next 6–12 Hours");
+    const distBadge = a.distance_km != null ? `<span class="badge badge-outline" style="font-family:var(--font-mono); font-size:0.72rem; color:#38BDF8; border-color:rgba(56,189,248,0.4);">📍 ~${a.distance_km} km away</span>` : "";
 
     const safeLocation = escapeHtml(a.location || "Monitored River Basin");
     const safeTitle = escapeHtml(a.title || "");
@@ -98,9 +120,10 @@ function renderAlertCards(alerts) {
     return `
       <div class="alert-card ${lvl.toLowerCase()}" style="margin-bottom: 1.25rem; border-left: 4px solid ${riskColor}; background: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-md);">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
-          <div style="display:flex; align-items:center; gap:0.5rem;">
+          <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
             <span class="badge ${badgeCls}" style="font-weight:800; font-size:0.75rem;">${lvl} FLOOD ALERT</span>
             <span style="font-size:0.72rem; color:#10B981; font-family:var(--font-mono); font-weight:700;">● Active Dispatch</span>
+            ${distBadge}
           </div>
           <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-muted);">${safeDate} • ${safeTime}</span>
         </div>

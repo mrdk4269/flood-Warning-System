@@ -318,6 +318,20 @@
       </div>
     </div>
 
+    <!-- Quick Data Export Toolbar -->
+    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span style="font-weight: 700; font-size: 0.9rem;">Export Data Records (CSV):</span>
+      </div>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="/api/export/flood-areas?format=csv" class="btn btn-sm btn-secondary" download>Export Flood Areas</a>
+        <a href="/api/export/alerts?format=csv" class="btn btn-sm btn-secondary" download>Export Alerts</a>
+        <a href="/api/export/safe-locations?format=csv" class="btn btn-sm btn-secondary" download>Export Shelters</a>
+        <a href="/api/export/rivers?format=csv" class="btn btn-sm btn-secondary" download>Export Rivers</a>
+      </div>
+    </div>
+
     <!-- TAB 4: Safe Locations Management -->
     <div id="tab-shelters" class="adm-tab-content" style="display:none;">
       <div class="card tactical-box">
@@ -331,6 +345,7 @@
                 <th>Capacity</th>
                 <th>Contact</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="adm-shelters-tbody">
@@ -549,11 +564,40 @@
             <td><span class="badge badge-low">${escapeHtml(s.type)}</span></td>
             <td class="mono">${escapeHtml(s.capacity)} People</td>
             <td>${escapeHtml(s.contact)}</td>
-            <td><span class="mono" style="color:#10B981;">● ${escapeHtml(s.status)}</span></td>
+            <td><span class="mono" style="color:${s.status === 'OPEN' ? '#10B981' : '#EF4444'};">● ${escapeHtml(s.status)}</span></td>
+            <td>
+              <button class="btn btn-sm btn-secondary" onclick="toggleShelterStatus(${s.id}, '${s.status === 'OPEN' ? 'FULL' : 'OPEN'}')">
+                ${s.status === 'OPEN' ? 'Mark Full' : 'Reopen'}
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="deleteShelterItem(${s.id})">Delete</button>
+            </td>
           </tr>
         `).join("");
       } catch (e) {
         console.error(e);
+      }
+    }
+
+    async function toggleShelterStatus(id, newStatus) {
+      try {
+        await API.updateSafeLocation(id, { status: newStatus });
+        showToast(`Shelter status updated to ${newStatus}`, "success");
+        await loadAdminShelters();
+        await loadAdminStats();
+      } catch (e) {
+        showToast("Failed to update shelter: " + e.message, "error");
+      }
+    }
+
+    async function deleteShelterItem(id) {
+      if (!confirm("Delete this shelter record?")) return;
+      try {
+        await API.deleteSafeLocation(id);
+        showToast("Shelter record removed", "success");
+        await loadAdminShelters();
+        await loadAdminStats();
+      } catch (e) {
+        showToast("Failed to delete shelter: " + e.message, "error");
       }
     }
 
