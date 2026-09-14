@@ -312,5 +312,28 @@ const API = {
 
   async getAuthStatus() {
     return this.fetchJson("/api/auth/status");
+  },
+
+  // Navigation & Routing
+  async getNavigationRoute(originLat, originLng, destLat, destLng) {
+    const q = new URLSearchParams({
+      origin_lat: originLat,
+      origin_lng: originLng,
+      dest_lat: destLat,
+      dest_lng: destLng
+    }).toString();
+    return this.fetchJson(`/api/navigation/route?${q}`);
+  },
+
+  async geocodeSearch(query) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=5`;
+      const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn("Geocode search failed:", e);
+    }
+    return [];
   }
 };
+

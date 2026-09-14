@@ -445,8 +445,8 @@ function initFloodMap(containerId = "map-container", options = {}) {
   riverLayer = L.layerGroup().addTo(map);
   majorRiversLayer = riverLayer;
 
-  // 3. floodRiskLayer: flood risk buffer zones (Shown by default)
-  floodRiskLayer = L.layerGroup().addTo(map);
+  // 3. floodRiskLayer: flood risk buffer zones (Hidden by default for live purity)
+  floodRiskLayer = L.layerGroup();
   riskZonesLayer = floodRiskLayer;
 
   // 4. shelterLayer: safe emergency shelters (Clustered, Shown by default)
@@ -471,10 +471,13 @@ function initFloodMap(containerId = "map-container", options = {}) {
   loadAllSpatialLayers();
   fetchAndRenderLiveData();
 
-  // Flood Impact Timeline: dedicated clustered layer for timeline event markers
-  timelineFloodEventsLayer = typeof L.markerClusterGroup === "function"
-    ? L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 50, disableClusteringAtZoom: 10 }).addTo(map)
-    : L.layerGroup().addTo(map);
+  // Flood Impact Timeline: dedicated layer for timeline event markers
+  timelineFloodEventsLayer = L.layerGroup();
+
+  // Initialize Real-Time Flood-Safe Road Navigation System
+  if (typeof FloodNavigationSystem !== "undefined" && FloodNavigationSystem.init) {
+    FloodNavigationSystem.init(map);
+  }
 
   if (!options.preview) {
     setupBasemapSwitcher();
@@ -1157,34 +1160,26 @@ function renderFilteredLiveLayers() {
       ,provenance: st.provenance || "DERIVED"
     });
 
-    // 1. River Monitoring Station Marker (Clustered)
+    // 1. Authoritative River & Meteorological Monitoring Station Marker (Clustered)
+    // Consolidates Gauge Water Level, 24h Rainfall, and Warning Stage into a single authentic coordinate
     const riverMarker = L.marker(latlng, {
       icon: createLiveRiverGaugeMarkerIcon(st.water_level, isDng ? "DANGER" : (isWarn ? "WARNING" : "NORMAL"))
     });
-    riverMarker.bindPopup(popupHtml);
-    riverMarker.on("click", () => showMobileSheet(st.location_name, popupHtml));
+
+    const enhancedPopupHtml = `
+      ${popupHtml}
+      <div style="margin-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.5rem;">
+        <button onclick="if (typeof FloodNavigationSystem !== 'undefined') FloodNavigationSystem.setDestination(${st.latitude}, ${st.longitude}, '${(st.location_name || '').replace(/'/g, "\\'")}');" class="btn btn-sm btn-primary" style="width: 100%; text-align: center; font-size: 0.78rem; padding: 0.4rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          <span>Navigate Safely Here</span>
+        </button>
+      </div>
+    `;
+
+    riverMarker.bindPopup(enhancedPopupHtml);
+    riverMarker.on("click", () => showMobileSheet(st.location_name, enhancedPopupHtml));
     riverStationsLayer.addLayer(riverMarker);
     liveStationMarkers[st.location_name] = riverMarker;
-
-    // 2. Rainfall Station Marker (Clustered)
-    const rainOffset = [st.latitude + 0.015, st.longitude + 0.015];
-    const rainMarker = L.marker(rainOffset, {
-      icon: createLiveRainfallMarkerIcon(st.rainfall_24h_mm, st.rainfall_24h_mm >= 65)
-    });
-    rainMarker.bindPopup(popupHtml);
-    rainMarker.on("click", () => showMobileSheet(`${st.location_name} Rainfall`, popupHtml));
-    liveRainfallLayer.addLayer(rainMarker);
-
-    // 3. Warning Alert Beacon (Unclustered for critical visibility)
-    if (isCrit || isHigh || isDng) {
-      const warnOffset = [st.latitude - 0.015, st.longitude - 0.015];
-      const warnMarker = L.marker(warnOffset, {
-        icon: createLiveWarningMarkerIcon()
-      });
-      warnMarker.bindPopup(popupHtml);
-      warnMarker.on("click", () => showMobileSheet(`ALERT: ${st.location_name}`, popupHtml));
-      floodWarningsLayer.addLayer(warnMarker);
-    }
   });
 }
 
@@ -1476,6 +1471,11 @@ window.closeOtherPanels = function(except) {
     if (layersPanel) layersPanel.classList.add("collapsed");
     document.body.classList.remove("layers-panel-open");
   }
+  if (except !== "navigation") {
+    if (typeof FloodNavigationSystem !== "undefined" && FloodNavigationSystem.closePanel) {
+      FloodNavigationSystem.closePanel();
+    }
+  }
   if (except !== "drawer") {
     const drawer = document.getElementById("live-dashboard-drawer");
     if (drawer) drawer.classList.add("collapsed");
@@ -1758,10 +1758,12 @@ function setupMapSearch() {
 // GPS USER LOCATION & EVACUATION ROUTES (Requirements #10, #11, #12)
 // =============================================================================
 
+let userAccuracyCircle = null;
+
 function locateUser() {
   if (!map) return;
   if (!navigator.geolocation) {
-    if (typeof showToast === "function") showToast("Geolocation not supported by your browser.", "error");
+    if (typeof showToast === "function") showToast("Geolocation is not supported by your browser.", "error");
     return;
   }
 
@@ -1771,10 +1773,22 @@ function locateUser() {
     (pos) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
+      const accuracy = pos.coords.accuracy || 30;
 
       if (userLocationMarker) {
         map.removeLayer(userLocationMarker);
       }
+      if (userAccuracyCircle) {
+        map.removeLayer(userAccuracyCircle);
+      }
+
+      userAccuracyCircle = L.circle([lat, lng], {
+        radius: accuracy,
+        color: "#0284C7",
+        fillColor: "#0284C7",
+        fillOpacity: 0.12,
+        weight: 1.5
+      }).addTo(map);
 
       userLocationMarker = L.circleMarker([lat, lng], {
         radius: 10,
@@ -1785,14 +1799,32 @@ function locateUser() {
         fillOpacity: 0.95
       }).addTo(map);
 
-      map.setView([lat, lng], 13);
+      map.setView([lat, lng], 14);
       showUserLocationCard(lat, lng);
 
-      if (typeof showToast === "function") showToast("📍 GPS Coordinate Locked!", "success");
+      // Connect with FloodNavigationSystem
+      if (typeof FloodNavigationSystem !== "undefined" && FloodNavigationSystem.setOrigin) {
+        FloodNavigationSystem.setOrigin(lat, lng, "My GPS Location");
+      }
+
+      if (typeof showToast === "function") showToast(`📍 GPS Coordinate Locked (±${Math.round(accuracy)}m)`, "success");
     },
-    () => {
-      if (typeof showToast === "function") showToast("GPS unavailable. Centering on national view.", "info");
-      map.setView([22.9734, 78.6569], 5);
+    (err) => {
+      let msg = "GPS unavailable. Please search your city or click on the map to set location.";
+      if (err.code === 1) {
+        msg = "Location permission denied. Please allow location permissions in your browser.";
+      } else if (err.code === 2) {
+        msg = "Network positioning service unavailable. Please search your location manually.";
+      } else if (err.code === 3) {
+        msg = "Location request timed out. Please retry or search your location.";
+      }
+      if (typeof showToast === "function") showToast(msg, "warning");
+      // Do NOT reset map to Central India; keep current view intact.
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
     }
   );
 }
@@ -1821,14 +1853,15 @@ function showUserLocationCard(lat, lng) {
     }
   });
 
-  // Calculate local flood risk
+  // Calculate local flood risk based on verified active polygons
   let localRisk = "Low";
   cachedFloodPolygons.forEach((fp) => {
-    const p = fp.properties || {};
-    if (fp.center) {
-      const d = computeHaversineDistance(lat, lng, fp.center[0], fp.center[1]);
+    const cLat = fp.center ? (fp.center.lat !== undefined ? fp.center.lat : fp.center[0]) : null;
+    const cLng = fp.center ? (fp.center.lng !== undefined ? fp.center.lng : fp.center[1]) : null;
+    if (cLat !== null && cLng !== null) {
+      const d = computeHaversineDistance(lat, lng, cLat, cLng);
       if (d < 10) {
-        localRisk = p.risk_level || p.risk || "Medium";
+        localRisk = fp.severity || fp.risk_level || "Medium";
       }
     }
   });
@@ -1839,7 +1872,7 @@ function showUserLocationCard(lat, lng) {
   const popupHtml = `
     <div class="popup-card" style="padding: 1.1rem; min-width: 250px;">
       <div style="font-size: 0.72rem; font-weight: 800; color: #38BDF8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.45rem;">
-        YOUR LOCATION
+        YOUR CURRENT LOCATION
       </div>
 
       <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
@@ -1855,8 +1888,9 @@ function showUserLocationCard(lat, lng) {
       </div>
 
       ${nearestShelter ? `
-        <button onclick="drawEvacuationRouteTo(${nearestShelter.lat}, ${nearestShelter.lng}, '${nearestShelter.name.replace(/'/g, "\\'")}', [${lat}, ${lng}])" class="btn btn-sm btn-primary" style="width: 100%; text-align: center; font-size: 0.8rem; padding: 0.45rem;">
-          Show Direction to Shelter
+        <button onclick="drawEvacuationRouteTo(${nearestShelter.lat}, ${nearestShelter.lng}, '${nearestShelter.name.replace(/'/g, "\\'")}', [${lat}, ${lng}])" class="btn btn-sm btn-primary" style="width: 100%; text-align: center; font-size: 0.8rem; padding: 0.45rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          <span>Navigate to Shelter (Road-Safe)</span>
         </button>
       ` : ''}
     </div>
@@ -1869,52 +1903,17 @@ function showUserLocationCard(lat, lng) {
   showMobileSheet("Your Location", popupHtml);
 }
 
-// Draw Evacuation Route Polyline (Requirement #12)
+// Real-Time Road Navigation Route Launcher
 window.drawEvacuationRouteTo = function(destLat, destLng, destName, originLatLng = null) {
-  if (!map || !evacuationRoutesLayer) return;
-  evacuationRoutesLayer.clearLayers();
-
-  const start = originLatLng || (userLocationMarker ? [userLocationMarker.getLatLng().lat, userLocationMarker.getLatLng().lng] : [destLat - 0.02, destLng - 0.02]);
-
-  const latDiff = destLat - start[0];
-  const lngDiff = destLng - start[1];
-
-  // Route waypoints avoiding low-lying inundation zones
-  const waypoints = [
-    [start[0], start[1]],
-    [start[0] + latDiff * 0.35 + 0.004, start[1] + lngDiff * 0.25 - 0.003],
-    [start[0] + latDiff * 0.7 + 0.002, start[1] + lngDiff * 0.75 + 0.002],
-    [destLat, destLng]
-  ];
-
-  const routeLine = L.polyline(waypoints, {
-    color: "#10B981",
-    weight: 5,
-    opacity: 0.95,
-    className: "leaflet-route-safe",
-    lineCap: "round",
-    lineJoin: "round"
-  }).addTo(evacuationRoutesLayer);
-
-  const routePopup = `
-    <div class="popup-card" style="padding: 0.85rem; min-width: 220px;">
-      <div style="font-size: 0.72rem; font-weight: 800; color: #F59E0B; text-transform: uppercase;">
-        APPROXIMATE DIRECTION ONLY
-      </div>
-      <div style="font-size: 0.92rem; font-weight: 800; color: #FFFFFF; margin: 0.35rem 0;">
-        Destination: ${escapeHtml(destName)}
-      </div>
-      <div style="font-size: 0.75rem; color: #94A3B8;">
-        This is a straight-line visual guide, not a navigable or safety-verified route. Check official road closures and emergency guidance.
-      </div>
-    </div>
-  `;
-  routeLine.bindPopup(routePopup);
-
-  map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-
-  if (typeof showToast === "function") {
-    showToast(`Direction guide plotted to ${destName}. Verify the route with local authorities.`, "info");
+  if (typeof FloodNavigationSystem !== "undefined" && FloodNavigationSystem.setDestination) {
+    if (originLatLng && originLatLng.length >= 2) {
+      FloodNavigationSystem.setOrigin(originLatLng[0], originLatLng[1], "Start Location");
+    }
+    FloodNavigationSystem.setDestination(destLat, destLng, destName);
+    FloodNavigationSystem.openPanel();
+  } else {
+    if (typeof showToast === "function") showToast(`Targeting ${destName}...`, "info");
+    if (map) map.flyTo([destLat, destLng], 14);
   }
 };
 
@@ -2214,6 +2213,8 @@ const FloodDataService = {
           name: p.name,
           state: p.state,
           district: p.district,
+          severity: sev,
+          risk_level: sev,
           center: center,
           _layer: layer
         });

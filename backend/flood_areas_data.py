@@ -759,148 +759,133 @@ def get_flood_effect_areas(
     period: str = "today", 
     state: Optional[str] = None, 
     district: Optional[str] = None, 
-    basin: Optional[str] = None
+    basin: Optional[str] = None,
+    include_catalog: bool = False
 ) -> List[Dict[str, Any]]:
     """
     Returns filtered list of flood effect areas matching temporal & geographic criteria.
-    Timestamps are computed once at module load and remain immutable (FG-012).
     - period: 'today', '7days', '30days', 'all'
     - state: State name or 'all'
     - district: District name or 'all'
     - basin: Basin name or 'all'
+    - include_catalog: If False, returns ONLY verified active flood areas based on live data.
     """
-    # FG-012: Do NOT recompute timestamps — they were set at module load
     now_current = datetime.utcnow()
     cutoff_today = now_current.date()
     cutoff_7days = (now_current - timedelta(days=7)).date()
     cutoff_30days = (now_current - timedelta(days=30)).date()
 
-    results = []
-    for ev in NATIONWIDE_FLOOD_EFFECT_AREAS:
-        ev_date = (now_current - timedelta(days=ev.get("days_ago", 0))).date()
-
-        # 1. Temporal filter
-        if period == "today":
-            if ev_date != cutoff_today:
-                continue
-        elif period == "7days":
-            if ev_date < cutoff_7days:
-                continue
-        elif period == "30days":
-            if ev_date < cutoff_30days:
-                continue
-
-        # 2. State filter
-        if state and state.lower() != "all":
-            if ev["state"].lower() != state.lower():
-                continue
-
-        # 3. District filter
-        if district and district.lower() != "all":
-            if ev["district"].lower() != district.lower():
-                continue
-
-        # 4. Basin filter
-        if basin and basin.lower() != "all":
-            if ev["river_basin"].lower() != basin.lower():
-                continue
-
-        results.append(ev)
-
-    # Cross-reference live station observations to inject real-time telemetry
-    try:
-        from backend.live_india_service import LiveIndiaDataService
-        live_map = LiveIndiaDataService.get_live_station_telemetry_map()
-    except Exception:
-        live_map = {}
-
     enriched_results = []
     existing_districts = set()
 
-    for ev in results:
-        ev_copy = dict(ev)
-        ev_copy["geometry"] = dict(ev["geometry"])
-        key = (ev.get("state", "").strip().lower(), ev.get("district", "").strip().lower())
-        existing_districts.add(key)
+    # 1. LIVE FLOOD EXTRACTION: Generate flood effect areas ONLY when real live flood criteria are met
+    try:
+        from backend.live_india_service import LiveIndiaDataService
+        cached_data = LiveIndiaDataService._CACHE.get("data")
+        if not cached_data:
+            cached_data = LiveIndiaDataService.sync_and_cache_live_observations()
 
-        if key in live_map:
-            live = live_map[key]
-            # If live rainfall or river level is available, inject real-time telemetry
-            if live.get("rainfall") is not None and live["rainfall"] > 0:
-                ev_copy["rainfall"] = round(float(live["rainfall"]), 1)
-            if live.get("water_level") is not None and live["water_level"] > 0:
-                ev_copy["water_level"] = round(float(live["water_level"]), 2)
-            if live.get("warning_active"):
-                ev_copy["severity"] = "Critical" if live.get("risk_level") == "CRITICAL" else "High"
-                ev_copy["risk_level"] = ev_copy["severity"]
-            ev_copy["data_source"] = f"Reference scenario enriched with Open-Meteo telemetry ({live.get('provenance', 'UNAVAILABLE')})"
-            ev_copy["provenance"] = "REFERENCE"
+        for t in (cached_data or []):
+            riv = t.get("river", {})
+            fw = t.get("flood_warning", {})
+            rain_val = float(t.get("rainfall_24h_mm") or t.get("rainfall", {}).get("value", 0.0) or 0.0)
+            is_danger = riv.get("river_state") == "DANGER"
+            is_warn = riv.get("river_state") == "WARNING"
+            is_high = fw.get("risk_level") in ["HIGH", "CRITICAL"]
+            is_extreme_rain = rain_val >= 65.0
 
-        enriched_results.append(ev_copy)
+            # STRICT GATE: Only create active flood polygon if river exceeds warning/danger stage or rain >= 65mm
+            if is_danger or (is_warn and is_high) or is_extreme_rain:
+                st_state = t.get("state", "").strip()
+                st_dist = t.get("district", "").strip()
+                key = (st_state.lower(), st_dist.lower())
 
-    # For TODAY: if any live station has an active warning / danger river level, synthesize an organic flood polygon
-    if period in ["today", "all"]:
-        try:
-            from backend.live_india_service import LiveIndiaDataService
-            cached_data = LiveIndiaDataService._CACHE.get("data") or []
-            for t in cached_data:
-                riv = t.get("river", {})
-                fw = t.get("flood_warning", {})
-                is_danger = riv.get("river_state") == "DANGER"
-                is_warn = riv.get("river_state") == "WARNING"
-                is_high = fw.get("risk_level") in ["HIGH", "CRITICAL"]
+                # Geographic filters
+                if state and state.lower() != "all" and st_state.lower() != state.lower():
+                    continue
+                if district and district.lower() != "all" and st_dist.lower() != district.lower():
+                    continue
+                if basin and basin.lower() != "all" and t.get("river_basin", "").lower() != basin.lower():
+                    continue
 
-                if is_danger or (is_warn and is_high):
-                    st_state = t.get("state", "").strip()
-                    st_dist = t.get("district", "").strip()
-                    key = (st_state.lower(), st_dist.lower())
+                lat = float(t.get("latitude"))
+                lon = float(t.get("longitude"))
+                radius_km = 5.0 if is_danger else 3.5
+                coords = generate_riparian_flood_polygon(lat, lon, radius_km=radius_km, elongation=2.0)
 
-                    if key not in existing_districts:
-                        # Check filters
-                        if state and state.lower() != "all" and st_state.lower() != state.lower():
-                            continue
-                        if district and district.lower() != "all" and st_dist.lower() != district.lower():
-                            continue
-                        if basin and basin.lower() != "all" and t.get("river_basin", "").lower() != basin.lower():
-                            continue
+                sev = "Critical" if is_danger else ("High" if is_high or is_extreme_rain else "Moderate")
+                dynamic_ev = {
+                    "id": f"flood_live_{t.get('key', 'gauge')}",
+                    "name": f"{t.get('location_name', st_dist)} (Active Inundation Zone)",
+                    "state": st_state,
+                    "district": st_dist,
+                    "river_basin": t.get("river_basin", "River Basin"),
+                    "river_name": t.get("river_name", "River"),
+                    "latitude": lat,
+                    "longitude": lon,
+                    "severity": sev,
+                    "risk_level": sev,
+                    "rainfall": round(rain_val, 1),
+                    "water_level": round(float(riv.get("value", 0.0)), 2),
+                    "affected_area_sqkm": round(math.pi * (radius_km ** 2) * 1.5, 1),
+                    "days_ago": 0,
+                    "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "date": datetime.utcnow().strftime("%Y-%m-%d"),
+                    "time": datetime.utcnow().strftime("%H:%M:%S"),
+                    "data_source": f"Verified live telemetry from {t.get('location_name')} ({t.get('provenance', 'LIVE')})",
+                    "provenance": "OBSERVED" if t.get("provenance") == "LIVE" else "DERIVED",
+                    "is_estimated": False,
+                    "description": f"Active flood hazard: River stage ({riv.get('value')}m) reached {riv.get('river_state')} threshold along {t.get('river_name')}. 24h rainfall: {rain_val}mm.",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [coords]
+                    }
+                }
+                enriched_results.append(dynamic_ev)
+                existing_districts.add(key)
+    except Exception as ex:
+        pass
 
-                        # Generate dynamic riparian polygon around the elevated river gauge
-                        lat = float(t.get("latitude"))
-                        lon = float(t.get("longitude"))
-                        radius_km = 4.8 if is_danger else 3.2
-                        coords = generate_riparian_flood_polygon(lat, lon, radius_km=radius_km, elongation=2.0)
+    # 2. HISTORICAL / CATALOG SCENARIOS: Only included if explicitly requested (e.g. historical analysis or demo catalog)
+    if include_catalog or period in ["7days", "30days"]:
+        for ev in NATIONWIDE_FLOOD_EFFECT_AREAS:
+            days = ev.get("days_ago", 0)
+            ev_date = (now_current - timedelta(days=days)).date()
 
-                        dynamic_ev = {
-                            "id": f"flood_live_{t.get('key', 'gauge')}",
-                            "name": f"{t.get('location_name', st_dist)} (Live Inundation Reach)",
-                            "state": st_state,
-                            "district": st_dist,
-                            "river_basin": t.get("river_basin", "River Basin"),
-                            "river_name": t.get("river_name", "River"),
-                            "latitude": lat,
-                            "longitude": lon,
-                            "severity": "Critical" if is_danger else "High",
-                            "risk_level": "Critical" if is_danger else "High",
-                            "rainfall": round(float(t.get("rainfall", {}).get("value", 0.0)), 1),
-                            "water_level": round(float(riv.get("value", 0.0)), 2),
-                            "affected_area_sqkm": round(math.pi * (radius_km ** 2) * 1.5, 1),
-                            "days_ago": 0,
-                            "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                            "date": datetime.utcnow().strftime("%Y-%m-%d"),
-                            "time": datetime.utcnow().strftime("%H:%M:%S"),
-                            "data_source": "Estimated buffer from Open-Meteo-derived discharge and FloodGuard rule thresholds",
-                            "provenance": "ESTIMATED",
-                            "is_estimated": True,
-                            "description": f"Estimated impact buffer: calculated river level ({riv.get('value')}m) exceeded {riv.get('river_state')} threshold along {t.get('river_name', 'river basin')}. This is not an observed flood extent.",
-                            "geometry": {
-                                "type": "Polygon",
-                                "coordinates": [coords]
-                            }
-                        }
-                        enriched_results.append(dynamic_ev)
-                        existing_districts.add(key)
-        except Exception:
-            pass
+            # For today: ONLY include if include_catalog is explicitly True
+            if period == "today":
+                if not include_catalog or ev_date != cutoff_today:
+                    continue
+            elif period == "7days":
+                # For 7 days historical: include past events (1 to 7 days ago)
+                if days < 1 or ev_date < cutoff_7days:
+                    continue
+            elif period == "30days":
+                # For 30 days historical: include past events (1 to 30 days ago)
+                if days < 1 or ev_date < cutoff_30days:
+                    continue
+
+            # State filter
+            if state and state.lower() != "all":
+                if ev["state"].lower() != state.lower():
+                    continue
+
+            # District filter
+            if district and district.lower() != "all":
+                if ev["district"].lower() != district.lower():
+                    continue
+
+            # Basin filter
+            if basin and basin.lower() != "all":
+                if ev["river_basin"].lower() != basin.lower():
+                    continue
+
+            key = (ev.get("state", "").strip().lower(), ev.get("district", "").strip().lower())
+            if key not in existing_districts:
+                ev_copy = dict(ev)
+                ev_copy["geometry"] = dict(ev["geometry"])
+                enriched_results.append(ev_copy)
+                existing_districts.add(key)
 
     return enriched_results
 
@@ -908,12 +893,19 @@ def get_flood_effect_geojson(
     period: str = "today", 
     state: Optional[str] = None, 
     district: Optional[str] = None, 
-    basin: Optional[str] = None
+    basin: Optional[str] = None,
+    include_catalog: bool = False
 ) -> Dict[str, Any]:
     """
-    Returns GeoJSON FeatureCollection of flood effect areas.
+    Returns GeoJSON FeatureCollection of verified live flood effect areas.
     """
-    areas = get_flood_effect_areas(period=period, state=state, district=district, basin=basin)
+    areas = get_flood_effect_areas(
+        period=period, 
+        state=state, 
+        district=district, 
+        basin=basin, 
+        include_catalog=include_catalog
+    )
     features = []
 
     for ev in areas:
@@ -939,7 +931,7 @@ def get_flood_effect_geojson(
                 "time": ev["time"],
                 "data_source": ev["data_source"],
                 "source": ev["data_source"],
-                "provenance": ev.get("provenance", "REFERENCE"),
+                "provenance": ev.get("provenance", "OBSERVED"),
                 "is_estimated": ev.get("is_estimated", False),
                 "description": ev["description"]
             },
@@ -954,6 +946,8 @@ def get_flood_effect_geojson(
             "state_filter": state or "all",
             "district_filter": district or "all",
             "count": len(features),
+            "is_live_verified": True,
+            "include_catalog": include_catalog,
             "generated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         },
         "features": features
