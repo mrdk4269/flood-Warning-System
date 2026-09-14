@@ -9,6 +9,7 @@ const API = {
   async fetchJson(endpoint, options = {}) {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...options.headers
@@ -248,11 +249,21 @@ const API = {
     });
   },
 
-  // Admin Login
+  // Admin Auth
   async login(email, password) {
     return this.fetchJson("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password })
     });
+  },
+
+  async logout() {
+    return this.fetchJson("/api/auth/logout", {
+      method: "POST"
+    });
+  },
+
+  async getAuthStatus() {
+    return this.fetchJson("/api/auth/status");
   }
 };

@@ -824,6 +824,7 @@ def get_india_states_geojson() -> Dict[str, Any]:
             "type": "Feature",
             "properties": {
                 "state_name": state_name,
+                "name": state_name,
                 "capital": meta["capital"],
                 "primary_basins": meta["primary_basins"],
                 "vulnerability_index": meta["vulnerability_index"],

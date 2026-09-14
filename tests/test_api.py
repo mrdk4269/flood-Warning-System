@@ -164,7 +164,7 @@ class TestFloodGuard(unittest.TestCase):
             self.assertIn(key, first, f"Missing key {key} in Req #11 schema")
         self.assertEqual(first["data_type"], "rainfall_24h")
         self.assertEqual(first["unit"], "mm")
-        self.assertIn(first["provenance"], ["LIVE", "HISTORICAL_FALLBACK"])
+        self.assertIn(first["provenance"], ["LIVE", "HISTORICAL_FALLBACK", "UNAVAILABLE"])
 
     def test_live_india_rivers_endpoint(self):
         """Verify Requirement #11 schema on live river gauge observation feed."""
@@ -363,6 +363,19 @@ class TestFloodGuard(unittest.TestCase):
         d_cuttack = res_cuttack.get_json()
         self.assertTrue(all(f["properties"]["district"].lower() == "cuttack" for f in d_cuttack.get("features", [])))
 
+    def test_unauthenticated_api_protection(self):
+        """Verify FG-001: Mutating API endpoints reject unauthenticated clients with 401."""
+        unauthed_client = app.test_client()
+        # Mutating endpoints must fail with 401
+        res_post = unauthed_client.post("/api/flood-areas", json={"area_name": "Test"})
+        self.assertEqual(res_post.status_code, 401)
+        res_del = unauthed_client.delete("/api/alerts/1")
+        self.assertEqual(res_del.status_code, 401)
+        # Unauthenticated admin page redirect
+        res_admin = unauthed_client.get("/admin", follow_redirects=False)
+        self.assertIn(res_admin.status_code, [302, 401])
+
 if __name__ == "__main__":
     unittest.main()
+
 

@@ -21,7 +21,6 @@ let stationLayer = null;           // River Monitoring Stations Layer (Clustered
 let riverStationsLayer = null;     // Alias for stationLayer
 
 let indiaStatesLayer = null;       // State Boundaries (Hidden by default)
-let districtsLayer = null;         // District Boundaries (Hidden by default)
 let historicalFloodsLayer = null;  // Historical Flood Areas (Hidden by default)
 let liveRainfallLayer = null;      // Rainfall Stations - Clustered (Hidden by default)
 let floodWarningsLayer = null;     // Critical Warning Alerts - Unclustered Beacons (Hidden by default)
@@ -142,47 +141,53 @@ function createFloodInfoPopupHtml(data) {
   } = data;
 
   const color = getRiskColor(risk);
+  const safeLocation = escapeHtml(location);
+  const safePrediction = escapeHtml(prediction);
+  const safeRainfall = escapeHtml(rainfall);
+  const safeRiverLevel = escapeHtml(riverLevel);
+  const safeProvenance = escapeHtml(provenance);
+  const safeRisk = escapeHtml(risk);
 
   return `
     <div class="popup-card" style="padding: 1.1rem; min-width: 255px;">
       <div style="font-size: 0.72rem; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.45rem; display: flex; justify-content: space-between; align-items: center;">
         <span>FLOOD INFORMATION</span>
-        <span class="provenance-tag ${provenance === 'LIVE' ? 'provenance-live' : 'provenance-sample'}">${provenance}</span>
+        <span class="provenance-tag ${safeProvenance === 'LIVE' ? 'provenance-live' : 'provenance-sample'}">${safeProvenance}</span>
       </div>
 
       <div style="margin-bottom: 0.45rem;">
         <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase; font-weight: 700;">Location:</div>
-        <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; line-height: 1.25;">${location}</div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; line-height: 1.25;">${safeLocation}</div>
       </div>
 
       <div style="margin-bottom: 0.55rem;">
         <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase; font-weight: 700; margin-bottom: 0.2rem;">Risk:</div>
         <div style="display: inline-block; font-weight: 800; font-size: 0.85rem; padding: 2px 10px; border-radius: 4px; background: ${color}22; color: ${color}; border: 1px solid ${color}66; letter-spacing: 0.05em;">
-          ${risk.toUpperCase()}
+          ${safeRisk.toUpperCase()}
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 0.55rem 0.65rem; margin-bottom: 0.55rem;">
         <div>
           <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase;">Rainfall:</div>
-          <div style="font-size: 1.05rem; font-weight: 800; color: #60A5FA; font-family: var(--font-mono); margin-top: 0.1rem;">${rainfall} mm</div>
+          <div style="font-size: 1.05rem; font-weight: 800; color: #60A5FA; font-family: var(--font-mono); margin-top: 0.1rem;">${safeRainfall} mm</div>
         </div>
         <div>
           <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase;">River Level:</div>
-          <div style="font-size: 1.05rem; font-weight: 800; color: ${color}; font-family: var(--font-mono); margin-top: 0.1rem;">${riverLevel} m</div>
+          <div style="font-size: 1.05rem; font-weight: 800; color: ${color}; font-family: var(--font-mono); margin-top: 0.1rem;">${safeRiverLevel} m</div>
         </div>
       </div>
 
       <div style="margin-bottom: 0.75rem; background: rgba(245, 158, 11, 0.08); border-left: 3px solid #F59E0B; padding: 0.4rem 0.55rem; border-radius: 0 4px 4px 0;">
         <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase; font-weight: 700;">Prediction:</div>
-        <div style="font-size: 0.82rem; font-weight: 700; color: #FDE68A;">${prediction}</div>
+        <div style="font-size: 0.82rem; font-weight: 700; color: #FDE68A;">${safePrediction}</div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem;">
-        <a href="${detailsUrl}" class="btn btn-sm btn-secondary" style="text-align: center; font-size: 0.76rem; padding: 0.4rem 0.2rem;">
+        <a href="${encodeURI(detailsUrl)}" class="btn btn-sm btn-secondary" style="text-align: center; font-size: 0.76rem; padding: 0.4rem 0.2rem;">
           View Details
         </a>
-        <a href="${safeLocationUrl}" class="btn btn-sm btn-primary" style="text-align: center; font-size: 0.76rem; padding: 0.4rem 0.2rem;">
+        <a href="${encodeURI(safeLocationUrl)}" class="btn btn-sm btn-primary" style="text-align: center; font-size: 0.76rem; padding: 0.4rem 0.2rem;">
           Find Safe Location
         </a>
       </div>
@@ -204,9 +209,15 @@ function createShelterPopupHtml(data) {
 
   const facilitiesHtml = facilities.map(f => `
     <div style="color: #34D399; font-size: 0.76rem; display: flex; align-items: center; gap: 0.35rem;">
-      <span style="font-weight: 800;">✓</span> <span>${f}</span>
+      <span style="font-weight: 800;">✓</span> <span>${escapeHtml(f)}</span>
     </div>
   `).join("");
+
+  const safeName = escapeHtml(name);
+  const safeDistance = escapeHtml(distance);
+  const safeCapacity = escapeHtml(capacity);
+  const safeAvailable = escapeHtml(available);
+  const escapedJsName = name.replace(/'/g, "\\'");
 
   return `
     <div class="popup-card" style="padding: 1.1rem; min-width: 250px;">
@@ -216,22 +227,22 @@ function createShelterPopupHtml(data) {
 
       <div style="margin-bottom: 0.45rem;">
         <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase; font-weight: 700;">Name:</div>
-        <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; line-height: 1.25;">${name}</div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; line-height: 1.25;">${safeName}</div>
       </div>
 
       <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
         <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; font-weight: 700;">Distance:</span>
-        <span style="font-size: 0.95rem; font-weight: 800; color: #38BDF8; font-family: var(--font-mono);">${distance}</span>
+        <span style="font-size: 0.95rem; font-weight: 800; color: #38BDF8; font-family: var(--font-mono);">${safeDistance}</span>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 0.55rem 0.65rem; margin-bottom: 0.6rem;">
         <div>
           <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase;">Capacity:</div>
-          <div style="font-size: 1.05rem; font-weight: 800; color: #E2E8F0; font-family: var(--font-mono); margin-top: 0.1rem;">${capacity}</div>
+          <div style="font-size: 1.05rem; font-weight: 800; color: #E2E8F0; font-family: var(--font-mono); margin-top: 0.1rem;">${safeCapacity}</div>
         </div>
         <div>
           <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase;">Available:</div>
-          <div style="font-size: 1.05rem; font-weight: 800; color: #34D399; font-family: var(--font-mono); margin-top: 0.1rem;">${available}</div>
+          <div style="font-size: 1.05rem; font-weight: 800; color: #34D399; font-family: var(--font-mono); margin-top: 0.1rem;">${safeAvailable}</div>
         </div>
       </div>
 
@@ -243,8 +254,8 @@ function createShelterPopupHtml(data) {
       </div>
 
       <div style="margin-top: 0.5rem;">
-        <button onclick="drawEvacuationRouteTo(${lat}, ${lng}, '${name.replace(/'/g, "\\'")}')" class="btn btn-sm btn-primary" style="width: 100%; text-align: center; font-size: 0.8rem; padding: 0.45rem;">
-          Get Directions
+        <button onclick="drawEvacuationRouteTo(${lat}, ${lng}, '${escapedJsName}')" class="btn btn-sm btn-primary" style="width: 100%; text-align: center; font-size: 0.8rem; padding: 0.45rem;">
+          Show Direction to Shelter
         </button>
       </div>
     </div>
@@ -425,7 +436,6 @@ function initFloodMap(containerId = "map-container", options = {}) {
 
   // Initialize Layer Groups (Requirements #4, #5: Separate Leaflet layer groups)
   indiaStatesLayer = L.layerGroup();
-  districtsLayer = L.layerGroup();
 
   // 1. floodImpactLayer: dedicated flood-effect polygons layer (Shown by default)
   floodImpactLayer = L.layerGroup().addTo(map);
@@ -955,7 +965,7 @@ function renderHospitals(geojson) {
           Hotline: ${helpline}
         </div>
         <button onclick="drawEvacuationRouteTo(${latlng[0]}, ${latlng[1]}, '${safeHospName}')" class="btn btn-sm btn-danger" style="width: 100%;">
-          Medical Emergency Route
+          Show Direction to Hospital (Approximate)
         </button>
       </div>
     `;
@@ -976,6 +986,17 @@ function renderHistoricalFloodsLayer(geojson) {
   const filteredFeatures = geojson.features.filter(f => matchesRegionFilter(f.properties));
 
   L.geoJSON({ type: "FeatureCollection", features: filteredFeatures }, {
+    pointToLayer: (feature, latlng) => {
+      const p = feature.properties || {};
+      const isCrit = (p.risk_level || "").toUpperCase() === "CRITICAL";
+      return L.circleMarker(latlng, {
+        radius: 7,
+        color: isCrit ? "#EF4444" : "#F59E0B",
+        fillColor: isCrit ? "#EF4444" : "#F59E0B",
+        fillOpacity: 0.7,
+        weight: 2
+      });
+    },
     style: (feature) => {
       const p = feature.properties || {};
       const isCrit = (p.risk_level || "").toUpperCase() === "CRITICAL";
@@ -1835,7 +1856,7 @@ function showUserLocationCard(lat, lng) {
 
       ${nearestShelter ? `
         <button onclick="drawEvacuationRouteTo(${nearestShelter.lat}, ${nearestShelter.lng}, '${nearestShelter.name.replace(/'/g, "\\'")}', [${lat}, ${lng}])" class="btn btn-sm btn-primary" style="width: 100%; text-align: center; font-size: 0.8rem; padding: 0.45rem;">
-          Get Directions
+          Show Direction to Shelter
         </button>
       ` : ''}
     </div>
@@ -1881,7 +1902,7 @@ window.drawEvacuationRouteTo = function(destLat, destLng, destName, originLatLng
         APPROXIMATE DIRECTION ONLY
       </div>
       <div style="font-size: 0.92rem; font-weight: 800; color: #FFFFFF; margin: 0.35rem 0;">
-        Destination: ${destName}
+        Destination: ${escapeHtml(destName)}
       </div>
       <div style="font-size: 0.75rem; color: #94A3B8;">
         This is a straight-line visual guide, not a navigable or safety-verified route. Check official road closures and emergency guidance.
@@ -2011,10 +2032,6 @@ const FloodDataService = {
     return this.loadFloodGeoJSON(period, { district });
   },
 
-  /**
-   * Requirement #2: If real flood polygon data is not available for an elevated
-   * station alert, generate an "Estimated Flood Impact Area" using realistic spatial
-   * buffers (16-vertex organic polygon) around the flood station/river valley.
   /**
    * Requirement #4: Renders flood-effect areas on Leaflet GeoJSON layer with
    * color-coding, hover effects, and interactive popups.
@@ -2228,7 +2245,13 @@ const FloodDataService = {
       const activeCount = cachedAlertData.filter(a => {
         const isActive = (a.status || "").toUpperCase() === "ACTIVE";
         if (!isActive) return false;
-        if (selectedState !== "all" && a.location && !a.location.toLowerCase().includes(selectedState.toLowerCase())) return false;
+        if (selectedState !== "all") {
+          const loc = (a.location || "").toLowerCase();
+          const matchesState = (a.state && a.state.toLowerCase() === selectedState.toLowerCase()) || loc.includes(selectedState.toLowerCase());
+          const districts = (allStatesMeta[selectedState]?.flood_prone_districts || []);
+          const matchesDistrict = districts.some(d => loc.includes(d.toLowerCase()));
+          if (!matchesState && !matchesDistrict) return false;
+        }
         return isWithinTimePeriod(a.date || a.created_at, selectedTimePeriod);
       }).length;
       elAlerts.textContent = activeCount;

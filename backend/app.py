@@ -5,7 +5,7 @@ Flask REST API & Static File Server for GIS Early Warning Prototype.
 import os
 import json
 from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory, session
+from flask import Flask, request, jsonify, send_from_directory, session, redirect
 
 from backend.database import get_connection, init_database, hash_password, verify_password
 from backend.risk_calculator import calculate_flood_risk, update_config, CONFIG
@@ -52,7 +52,7 @@ def protect_mutating_endpoints():
     """Require an authenticated administrator for every state-changing API call."""
     if request.method not in {"POST", "PUT", "DELETE", "PATCH"}:
         return None
-    if request.path == "/api/auth/login":
+    if request.path in {"/api/auth/login", "/api/auth/logout"}:
         return None
     if not request.path.startswith("/api/"):
         return None
@@ -101,11 +101,16 @@ def serve_safe_locations():
 def serve_history():
     return send_from_directory(FRONTEND_DIR, "history.html")
 
+@app.route("/admin-login")
+@app.route("/admin-login.html")
+def serve_admin_login():
+    return send_from_directory(FRONTEND_DIR, "admin-login.html")
+
 @app.route("/admin")
 @app.route("/admin.html")
 def serve_admin():
     if session.get("role") != "admin":
-        return send_from_directory(FRONTEND_DIR, "admin-login.html"), 401
+        return redirect("/admin-login")
     return send_from_directory(FRONTEND_DIR, "admin.html")
 
 @app.route("/css/<path:filename>")
@@ -806,6 +811,8 @@ def api_geojson_historical_floods():
             "type": "Feature",
             "properties": {
                 **ev,
+                "feature_type": "historical_event_location",
+                "geometry_note": "Archive point location of historical flood event, not an inundation polygon.",
                 "provenance": "HISTORICAL"
             },
             "geometry": {
@@ -992,6 +999,22 @@ def login():
 def logout():
     session.clear()
     return jsonify({"status": "success"})
+
+
+@app.route("/api/auth/status", methods=["GET"])
+def auth_status():
+    if session.get("role") == "admin":
+        return jsonify({
+            "authenticated": True,
+            "role": "admin",
+            "user_id": session.get("user_id")
+        })
+    return jsonify({
+        "authenticated": False,
+        "role": session.get("role", "guest"),
+        "user_id": None
+    })
+
 
 if __name__ == "__main__":
     print("==================================================")
