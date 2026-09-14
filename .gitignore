@@ -35,3 +35,4 @@ database/*.db-wal
 .idea/
 .DS_Store
 Thumbs.db
+graphify-out/

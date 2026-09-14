@@ -55,6 +55,45 @@ let cachedAlertData = [];           // All alerts fetched from /api/alerts
 let cachedFloodAreasDbData = [];    // All flood areas from /api/flood-areas with timestamps
 let timelineFloodEventsLayer = null; // Dedicated layer for timeline flood event markers
 
+// Static GeoJSON caches for regional filtering (FG-008)
+let cachedHistoricalFloodsGeo = null;
+let cachedForecastRiskGeo = null;
+let cachedSheltersGeo = null;
+let cachedHospitalsGeo = null;
+let cachedRiskZonesGeo = null;
+
+function escapeHtml(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function matchesRegionFilter(props) {
+  if (!props) return true;
+  if (selectedState !== "all" && props.state && props.state.toLowerCase() !== selectedState.toLowerCase()) {
+    return false;
+  }
+  if (selectedDistrict !== "all" && props.district && props.district.toLowerCase() !== selectedDistrict.toLowerCase()) {
+    return false;
+  }
+  if (selectedBasin !== "all" && props.river_basin && props.river_basin.toLowerCase() !== selectedBasin.toLowerCase()) {
+    return false;
+  }
+  return true;
+}
+
+function renderFilteredStaticLayers() {
+  if (cachedHistoricalFloodsGeo) renderHistoricalFloodsLayer(cachedHistoricalFloodsGeo);
+  if (cachedForecastRiskGeo) renderForecastRiskLayer(cachedForecastRiskGeo);
+  if (cachedSheltersGeo) renderShelters(cachedSheltersGeo);
+  if (cachedHospitalsGeo) renderHospitals(cachedHospitalsGeo);
+  if (cachedRiskZonesGeo) renderRiskZonesGeoJson(cachedRiskZonesGeo);
+}
+
 // NASA Daily Satellite Imagery Tile Generator
 function getNasaDailyTileUrl() {
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -98,7 +137,8 @@ function createFloodInfoPopupHtml(data) {
     riverLevel = 7.2,
     prediction = "Flood possible in 6–12 hours",
     detailsUrl = "/risk",
-    safeLocationUrl = "/safe-locations"
+    safeLocationUrl = "/safe-locations",
+    provenance = "DERIVED"
   } = data;
 
   const color = getRiskColor(risk);
@@ -107,7 +147,7 @@ function createFloodInfoPopupHtml(data) {
     <div class="popup-card" style="padding: 1.1rem; min-width: 255px;">
       <div style="font-size: 0.72rem; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.45rem; display: flex; justify-content: space-between; align-items: center;">
         <span>FLOOD INFORMATION</span>
-        <span class="provenance-tag provenance-live">LIVE</span>
+        <span class="provenance-tag ${provenance === 'LIVE' ? 'provenance-live' : 'provenance-sample'}">${provenance}</span>
       </div>
 
       <div style="margin-bottom: 0.45rem;">
@@ -599,6 +639,7 @@ window.onStateSelectChange = function(stateVal) {
     selectedDistrict = "all";
     map.flyTo([22.9734, 78.6569], 5, { duration: 1.2 });
     renderFilteredLiveLayers();
+    renderFilteredStaticLayers();
     syncTimelineFloodAreas();
     return;
   }
@@ -620,6 +661,7 @@ window.onStateSelectChange = function(stateVal) {
   }
 
   renderFilteredLiveLayers();
+  renderFilteredStaticLayers();
   syncTimelineFloodAreas();
 };
 
@@ -631,6 +673,7 @@ window.onDistrictSelectChange = function(distVal) {
       map.flyTo(allStatesMeta[selectedState].center, allStatesMeta[selectedState].zoom || 7, { duration: 1.0 });
     }
     renderFilteredLiveLayers();
+    renderFilteredStaticLayers();
     syncTimelineFloodAreas();
     return;
   }
@@ -650,6 +693,7 @@ window.onDistrictSelectChange = function(distVal) {
   }
 
   renderFilteredLiveLayers();
+  renderFilteredStaticLayers();
   syncTimelineFloodAreas();
 };
 
@@ -661,6 +705,7 @@ window.onBasinSelectChange = function(basinKey) {
       map.flyTo([22.9734, 78.6569], 5, { duration: 1.2 });
     }
     renderFilteredLiveLayers();
+    renderFilteredStaticLayers();
     syncTimelineFloodAreas();
     return;
   }
@@ -674,6 +719,7 @@ window.onBasinSelectChange = function(basinKey) {
   }
 
   renderFilteredLiveLayers();
+  renderFilteredStaticLayers();
   syncTimelineFloodAreas();
 };
 
@@ -709,6 +755,12 @@ async function loadAllSpatialLayers() {
       API.getGeoJsonLayer("risk_zones").catch(() => null)
     ]);
 
+    cachedHistoricalFloodsGeo = historicalFloodsGeo;
+    cachedForecastRiskGeo = forecastRiskGeo;
+    cachedSheltersGeo = sheltersGeo;
+    cachedHospitalsGeo = hospitalsGeo;
+    cachedRiskZonesGeo = riskZonesGeo;
+
     if (indiaStatesGeo) renderIndiaStatesLayer(indiaStatesGeo);
     if (indiaRiversGeo) renderMajorRiversLayer(indiaRiversGeo);
     if (historicalFloodsGeo) renderHistoricalFloodsLayer(historicalFloodsGeo);
@@ -735,15 +787,15 @@ function renderIndiaStatesLayer(geojson) {
       dashArray: "3, 3"
     },
     onEachFeature: (feature, layer) => {
-      const stateName = feature.properties?.name || "State";
-      layer.bindTooltip(`<b>${stateName}</b>`, { sticky: true });
+      const stateName = feature.properties?.state_name || feature.properties?.name || "State";
+      layer.bindTooltip(`<b>${escapeHtml(stateName)}</b>`, { sticky: true });
       layer.on("mouseover", function() {
         this.setStyle({ fillOpacity: 0.18, weight: 2.2, color: "#60A5FA" });
       });
       layer.on("mouseout", function() {
         this.setStyle({ fillOpacity: 0.05, weight: 1.4, color: "#38BDF8" });
       });
-      layer.on("click", function() {
+      layer.on("click", () => {
         const stateSelect = document.getElementById("state-selector");
         if (stateSelect) {
           stateSelect.value = stateName;
@@ -754,30 +806,34 @@ function renderIndiaStatesLayer(geojson) {
   }).addTo(indiaStatesLayer);
 }
 
-// 2. Rivers & Waterways (Core Citizen Layer: Shown by default)
+// 2. Major River Networks (Advanced GIS: Off by default)
 function renderMajorRiversLayer(geojson) {
   majorRiversLayer.clearLayers();
   L.geoJSON(geojson, {
-    style: (feature) => ({
-      color: feature.properties?.color || "#06B6D4",
-      weight: 3.5,
-      opacity: 0.88,
-      lineCap: "round",
-      lineJoin: "round"
-    }),
+    style: (feature) => {
+      const len = feature.properties?.length_km || 1000;
+      return {
+        color: "#0284C7",
+        weight: len > 2000 ? 3.5 : 2.2,
+        opacity: 0.85,
+        lineCap: "round",
+        lineJoin: "round"
+      };
+    },
     onEachFeature: (feature, layer) => {
       const p = feature.properties || {};
-      const popupHtml = `
-        <div class="popup-card">
-          <div style="font-size:0.7rem; color:#06B6D4; font-weight:800; text-transform:uppercase;">RIVER TRANSECT</div>
-          <div class="popup-title" style="margin:0.3rem 0;">${p.river_name || "Major River"}</div>
-          <div class="popup-row"><span class="popup-label">Basin</span><span class="popup-val">${p.basin || "River Basin"}</span></div>
-          <div class="popup-row"><span class="popup-label">Length</span><span class="popup-val mono">${p.length_km ? p.length_km.toLocaleString() + " km" : "N/A"}</span></div>
-          <div class="popup-row"><span class="popup-label">Riparian States</span><span class="popup-val">${p.states_covered || "India"}</span></div>
-        </div>
-      `;
-      layer.bindPopup(popupHtml);
-      layer.on("click", () => showMobileSheet(p.river_name || "River Transect", popupHtml));
+      const riverName = escapeHtml(p.name || "Major River");
+      const basinName = escapeHtml(p.basin || "River Basin");
+      const lengthKm = escapeHtml(p.length_km || "N/A");
+      const tooltip = `<b>${riverName}</b><br><span style="font-size:0.75rem;">Basin: ${basinName} (${lengthKm} km)</span>`;
+      layer.bindTooltip(tooltip, { sticky: true });
+      layer.on("mouseover", function() {
+        this.setStyle({ weight: 4.5, color: "#38BDF8" });
+      });
+      layer.on("mouseout", function() {
+        const len = feature.properties?.length_km || 1000;
+        this.setStyle({ weight: len > 2000 ? 3.5 : 2.2, color: "#0284C7" });
+      });
     }
   }).addTo(majorRiversLayer);
 }
@@ -789,9 +845,13 @@ function renderFloodAreasGeoJson(geojson) {
 
 // 4. Flood Risk Buffer Zones GeoJSON (Core Citizen Layer: Shown by default)
 function renderRiskZonesGeoJson(geojson) {
+  if (!riskZonesLayer) return;
+  riskZonesLayer.clearLayers();
   if (!geojson || !geojson.features) return;
 
-  L.geoJSON(geojson, {
+  const filteredFeatures = geojson.features.filter(f => matchesRegionFilter(f.properties));
+
+  L.geoJSON({ type: "FeatureCollection", features: filteredFeatures }, {
     style: (feature) => {
       const risk = feature.properties?.risk_level || feature.properties?.risk || "Medium";
       return {
@@ -806,12 +866,14 @@ function renderRiskZonesGeoJson(geojson) {
     onEachFeature: (feature, layer) => {
       const p = feature.properties || {};
       const risk = p.risk_level || p.risk || "Medium";
+      const name = escapeHtml(p.name || "Risk Zone");
+      const desc = escapeHtml(p.description || "Active monitoring");
       const popupHtml = `
         <div class="popup-card">
           <div style="font-size:0.7rem; color:${getRiskColor(risk)}; font-weight:800; text-transform:uppercase;">FLOOD RISK BUFFER</div>
-          <div class="popup-title" style="margin:0.3rem 0;">${p.name || "Risk Zone"}</div>
+          <div class="popup-title" style="margin:0.3rem 0;">${name}</div>
           <div class="popup-row"><span class="popup-label">Composite Risk</span><span class="popup-val">${renderRiskBadge(risk)}</span></div>
-          <div class="popup-row"><span class="popup-label">Advisory</span><span class="popup-val">${p.description || "Active monitoring"}</span></div>
+          <div class="popup-row"><span class="popup-label">Advisory</span><span class="popup-val">${desc}</span></div>
         </div>
       `;
       layer.bindPopup(popupHtml);
@@ -822,15 +884,17 @@ function renderRiskZonesGeoJson(geojson) {
 
 // 5. Safe Shelters (Core Citizen Layer: Clustered, Shown by default)
 function renderShelters(geojson) {
+  if (!sheltersLayer) return;
   sheltersLayer.clearLayers();
   cachedSheltersData = [];
   if (!geojson || !geojson.features) return;
 
   geojson.features.forEach((feature) => {
+    const p = feature.properties || {};
+    if (!matchesRegionFilter(p)) return;
     const coords = feature.geometry?.coordinates;
     if (!coords) return;
     const latlng = [coords[1], coords[0]];
-    const p = feature.properties || {};
 
     const marker = L.marker(latlng, { icon: ICONS.shelter });
     const popupHtml = createShelterPopupHtml({
@@ -859,31 +923,38 @@ function renderShelters(geojson) {
 
 // 6. Hospitals & Trauma Centers (Advanced GIS: Clustered, Hidden by default)
 function renderHospitals(geojson) {
+  if (!hospitalsLayer) return;
   hospitalsLayer.clearLayers();
   if (!geojson || !geojson.features) return;
 
   geojson.features.forEach((feature) => {
+    const p = feature.properties || {};
+    if (!matchesRegionFilter(p)) return;
     const coords = feature.geometry?.coordinates;
     if (!coords) return;
     const latlng = [coords[1], coords[0]];
-    const p = feature.properties || {};
 
     const marker = L.marker(latlng, { icon: ICONS.hospital });
+    const hospName = escapeHtml(p.hospital_name || p.name || "Emergency Medical Center");
+    const safeHospName = (p.hospital_name || p.name || "Hospital").replace(/'/g, "\\'");
+    const helpline = escapeHtml(p.ambulance_helpline || "108 / 102");
+    const availBeds = escapeHtml(p.available_beds ?? 12);
+    const totBeds = escapeHtml(p.total_beds ?? 50);
     const popupHtml = `
       <div class="popup-card" style="padding: 1.1rem; min-width: 250px;">
         <div style="font-size: 0.72rem; font-weight: 800; color: #EF4444; text-transform: uppercase;">
           EMERGENCY MEDICAL CENTER
         </div>
         <div class="popup-title" style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; margin: 0.35rem 0;">
-          ${p.hospital_name || p.name}
+          ${hospName}
         </div>
         <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 0.5rem;">
-          ICU Capacity: <strong style="color: #10B981;">${p.available_beds || 12} Available</strong> / ${p.total_beds || 50}
+          ICU Capacity: <strong style="color: #10B981;">${availBeds} Available</strong> / ${totBeds}
         </div>
         <div style="font-size: 0.78rem; color: #EF4444; font-family: var(--font-mono); margin-bottom: 0.65rem;">
-          Hotline: ${p.ambulance_helpline || "108 / 102"}
+          Hotline: ${helpline}
         </div>
-        <button onclick="drawEvacuationRouteTo(${latlng[0]}, ${latlng[1]}, '${(p.hospital_name || p.name).replace(/'/g, "\\'")}')" class="btn btn-sm btn-danger" style="width: 100%;">
+        <button onclick="drawEvacuationRouteTo(${latlng[0]}, ${latlng[1]}, '${safeHospName}')" class="btn btn-sm btn-danger" style="width: 100%;">
           Medical Emergency Route
         </button>
       </div>
@@ -898,10 +969,13 @@ function renderHospitals(geojson) {
 
 // 7. Historical Flood Footprints (Advanced GIS: Hidden by default, Requirement #15)
 function renderHistoricalFloodsLayer(geojson) {
+  if (!historicalFloodsLayer) return;
   historicalFloodsLayer.clearLayers();
   if (!geojson || !geojson.features) return;
 
-  L.geoJSON(geojson, {
+  const filteredFeatures = geojson.features.filter(f => matchesRegionFilter(f.properties));
+
+  L.geoJSON({ type: "FeatureCollection", features: filteredFeatures }, {
     style: (feature) => {
       const p = feature.properties || {};
       const isCrit = (p.risk_level || "").toUpperCase() === "CRITICAL";
@@ -916,17 +990,25 @@ function renderHistoricalFloodsLayer(geojson) {
     },
     onEachFeature: (feature, layer) => {
       const p = feature.properties || {};
+      const name = escapeHtml(p.name || p.flood_event || "Flood Event");
+      const state = escapeHtml(p.state || "");
+      const year = escapeHtml(p.year || "");
+      const district = escapeHtml(p.district || p.river_basin || "Nationwide");
+      const rain = escapeHtml(p.rainfall_mm ?? 0);
+      const stage = escapeHtml(p.water_level_m ?? 0);
+      const impact = escapeHtml(p.human_impact || "Significant");
+
       const popupHtml = `
         <div class="popup-card" style="padding: 1.1rem; min-width: 250px;">
           <div style="font-size: 0.72rem; font-weight: 800; color: #F59E0B; text-transform: uppercase;">
             ARCHIVED HISTORICAL FLOOD
           </div>
-          <div class="popup-title" style="font-size: 1.1rem; margin: 0.35rem 0;">${p.name || p.flood_event}</div>
-          <div style="margin-bottom: 0.5rem;">${renderRiskBadge(p.risk_level)} <span class="badge badge-low">${p.state} (${p.year})</span></div>
-          <div class="popup-row"><span class="popup-label">District</span><span class="popup-val">${p.district || p.river_basin || "Nationwide"}</span></div>
-          <div class="popup-row"><span class="popup-label">Peak Rain</span><span class="popup-val mono" style="color: #60A5FA;">${p.rainfall_mm} mm</span></div>
-          <div class="popup-row"><span class="popup-label">Peak Stage</span><span class="popup-val mono" style="color: #F59E0B;">${p.water_level_m} m</span></div>
-          <div class="popup-row"><span class="popup-label">Impact</span><span class="popup-val" style="font-size:0.75rem; color:#FCA5A5;">${p.human_impact || "Significant"}</span></div>
+          <div class="popup-title" style="font-size: 1.1rem; margin: 0.35rem 0;">${name}</div>
+          <div style="margin-bottom: 0.5rem;">${renderRiskBadge(p.risk_level)} <span class="badge badge-low">${state} (${year})</span></div>
+          <div class="popup-row"><span class="popup-label">District</span><span class="popup-val">${district}</span></div>
+          <div class="popup-row"><span class="popup-label">Peak Rain</span><span class="popup-val mono" style="color: #60A5FA;">${rain} mm</span></div>
+          <div class="popup-row"><span class="popup-label">Peak Stage</span><span class="popup-val mono" style="color: #F59E0B;">${stage} m</span></div>
+          <div class="popup-row"><span class="popup-label">Impact</span><span class="popup-val" style="font-size:0.75rem; color:#FCA5A5;">${impact}</span></div>
         </div>
       `;
       layer.bindPopup(popupHtml);
@@ -937,10 +1019,13 @@ function renderHistoricalFloodsLayer(geojson) {
 
 // 8. Predicted Flood Areas (Advanced GIS: Hidden by default, Requirement #14)
 function renderForecastRiskLayer(geojson) {
+  if (!forecastRiskLayer) return;
   forecastRiskLayer.clearLayers();
   if (!geojson || !geojson.features) return;
 
-  L.geoJSON(geojson, {
+  const filteredFeatures = geojson.features.filter(f => matchesRegionFilter(f.properties));
+
+  L.geoJSON({ type: "FeatureCollection", features: filteredFeatures }, {
     style: (feature) => {
       const p = feature.properties || {};
       const isHigh = (p.forecast_risk_level || "").toUpperCase() === "HIGH";
@@ -955,11 +1040,12 @@ function renderForecastRiskLayer(geojson) {
     },
     onEachFeature: (feature, layer) => {
       const p = feature.properties || {};
+      const zoneName = p.zone_name || `${p.state || 'Regional'} Predicted Alert Zone`;
       const popupHtml = createPredictionPopupHtml({
-        area: `${p.state || 'Regional'} Predicted Inundation Zone`,
+        area: escapeHtml(zoneName),
         probability: "78%",
         risk: (p.forecast_risk_level || "HIGH").toUpperCase(),
-        expected: p.horizon || "Next 6–12 Hours"
+        expected: escapeHtml(p.horizon || "Next 6–12 Hours")
       });
 
       layer.bindPopup(popupHtml);
@@ -1001,7 +1087,7 @@ async function fetchAndRenderLiveData(forceRefresh = false) {
       updateLiveDashboardUI(dashboardData, statusData, overviewData);
       renderFilteredLiveLayers();
       updateTelemetryRibbon(dashboardData, overviewData);
-      updateTimelineSummary();
+      await syncTimelineFloodAreas({ fitBounds: false });
     }
   } catch (err) {
     console.error("Failed to fetch live flood data:", err);
@@ -1047,6 +1133,7 @@ function renderFilteredLiveLayers() {
       prediction: isDng ? "Flood imminent (0–3 hours)" : (isWarn ? "Flood possible in 6–12 hours" : "Water levels stable"),
       detailsUrl: `/risk?target=${encodeURIComponent(st.location_name)}`,
       safeLocationUrl: `/safe-locations?origin=${encodeURIComponent(st.location_name)}&lat=${st.latitude}&lng=${st.longitude}`
+      ,provenance: st.provenance || "DERIVED"
     });
 
     // 1. River Monitoring Station Marker (Clustered)
@@ -1251,7 +1338,10 @@ window.forceSyncLiveData = async function() {
   if (typeof showToast === "function") {
     showToast("⚡ Synchronizing live rainfall, river telemetry, and spatial warnings...", "info");
   }
-  await fetchAndRenderLiveData(true);
+  await Promise.all([
+    fetchAndRenderLiveData(true),
+    syncTimelineFloodAreas({ fitBounds: false })
+  ]);
 };
 
 window.triggerLiveMeteoSync = window.forceSyncLiveData;
@@ -1267,7 +1357,6 @@ function setupLayerToggles() {
     "toggle-major-rivers": () => riverLayer,
     "toggle-shelters": () => shelterLayer,
     "toggle-state-boundaries": () => indiaStatesLayer,
-    "toggle-district-boundaries": () => districtsLayer,
     "toggle-river-stations": () => stationLayer,
     "toggle-live-rainfall": () => liveRainfallLayer,
     "toggle-flood-warnings": () => floodWarningsLayer,
@@ -1349,9 +1438,10 @@ window.setMapMode = function(mode) {
     if (btnLive) btnLive.classList.remove("active-live");
 
     if (map.hasLayer(liveAffectedLayer)) map.removeLayer(liveAffectedLayer);
+    if (map.hasLayer(riskZonesLayer)) map.removeLayer(riskZonesLayer);
     if (!map.hasLayer(historicalFloodsLayer)) map.addLayer(historicalFloodsLayer);
 
-    if (typeof showToast === "function") showToast("🏛️ Historical Disaster Archive Mode Activated", "info");
+    if (typeof showToast === "function") showToast("📜 Historical Flood Archives Activated", "info");
   }
 };
 
@@ -1363,14 +1453,17 @@ window.closeOtherPanels = function(except) {
   if (except !== "layers") {
     const layersPanel = document.getElementById("layers-panel");
     if (layersPanel) layersPanel.classList.add("collapsed");
+    document.body.classList.remove("layers-panel-open");
   }
   if (except !== "drawer") {
     const drawer = document.getElementById("live-dashboard-drawer");
     if (drawer) drawer.classList.add("collapsed");
+    document.body.classList.remove("drawer-open");
   }
   if (except !== "summary") {
     const summary = document.getElementById("timeline-summary-popover");
     if (summary) summary.classList.remove("open");
+    document.body.classList.remove("summary-open");
   }
 };
 
@@ -1381,8 +1474,10 @@ window.toggleLayersPanel = function() {
   if (isCollapsed) {
     window.closeOtherPanels("layers");
     panel.classList.remove("collapsed");
+    document.body.classList.add("layers-panel-open");
   } else {
     panel.classList.add("collapsed");
+    document.body.classList.remove("layers-panel-open");
   }
 };
 
@@ -1393,8 +1488,10 @@ window.toggleLiveDashboardDrawer = function() {
   if (isCollapsed) {
     window.closeOtherPanels("drawer");
     drawer.classList.remove("collapsed");
+    document.body.classList.add("drawer-open");
   } else {
     drawer.classList.add("collapsed");
+    document.body.classList.remove("drawer-open");
   }
 };
 
@@ -1405,8 +1502,10 @@ window.toggleTimelineSummaryModal = function() {
   if (!isOpen) {
     window.closeOtherPanels("summary");
     popover.classList.add("open");
+    document.body.classList.add("summary-open");
   } else {
     popover.classList.remove("open");
+    document.body.classList.remove("summary-open");
   }
 };
 
@@ -1553,7 +1652,6 @@ function setupMapSearch() {
           zoom: 12,
           action: () => {
             map.flyTo(center, 12, { duration: 1.1 });
-            if (fp._layer) setTimeout(() => fp._layer.openPopup(), 1200);
           }
         });
       }
@@ -1581,7 +1679,7 @@ function setupMapSearch() {
     if (matches.length === 0) {
       suggestionsBox.innerHTML = `
         <div style="padding: 0.75rem; text-align: center; color: #94A3B8; font-size: 0.8rem;">
-          No matching location found. Try searching Cuttack, Assam, Ganga, or a safe shelter.
+          No matching location found. Search by state, district, river basin, station, or shelter.
         </div>
       `;
       suggestionsBox.classList.add("active");
@@ -1594,10 +1692,10 @@ function setupMapSearch() {
       row.className = "search-suggestion-item";
       row.innerHTML = `
         <div>
-          <div style="font-weight: 700; color: #FFFFFF;">${m.title}</div>
-          <div style="font-size: 0.72rem; color: #94A3B8;">${m.subtitle}</div>
+          <div style="font-weight: 700; color: #FFFFFF;">${escapeHtml(m.title)}</div>
+          <div style="font-size: 0.72rem; color: #94A3B8;">${escapeHtml(m.subtitle)}</div>
         </div>
-        <span class="search-suggestion-badge ${m.badgeCls}">${m.badge}</span>
+        <span class="search-suggestion-badge ${escapeHtml(m.badgeCls)}">${escapeHtml(m.badge)}</span>
       `;
       row.onclick = () => {
         searchInput.value = m.title;
@@ -1779,14 +1877,14 @@ window.drawEvacuationRouteTo = function(destLat, destLng, destName, originLatLng
 
   const routePopup = `
     <div class="popup-card" style="padding: 0.85rem; min-width: 220px;">
-      <div style="font-size: 0.72rem; font-weight: 800; color: #10B981; text-transform: uppercase;">
-        ✓ RECOMMENDED SAFE ROUTE
+      <div style="font-size: 0.72rem; font-weight: 800; color: #F59E0B; text-transform: uppercase;">
+        APPROXIMATE DIRECTION ONLY
       </div>
       <div style="font-size: 0.92rem; font-weight: 800; color: #FFFFFF; margin: 0.35rem 0;">
         Destination: ${destName}
       </div>
       <div style="font-size: 0.75rem; color: #94A3B8;">
-        Safety Verified: Route bypasses active inundation zones and submerged roads.
+        This is a straight-line visual guide, not a navigable or safety-verified route. Check official road closures and emergency guidance.
       </div>
     </div>
   `;
@@ -1795,7 +1893,7 @@ window.drawEvacuationRouteTo = function(destLat, destLng, destName, originLatLng
   map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
 
   if (typeof showToast === "function") {
-    showToast(`🟢 Recommended safe evacuation route plotted to ${destName}!`, "success");
+    showToast(`Direction guide plotted to ${destName}. Verify the route with local authorities.`, "info");
   }
 };
 
@@ -1917,70 +2015,10 @@ const FloodDataService = {
    * Requirement #2: If real flood polygon data is not available for an elevated
    * station alert, generate an "Estimated Flood Impact Area" using realistic spatial
    * buffers (16-vertex organic polygon) around the flood station/river valley.
-   */
-  generateEstimatedFloodPolygon(station) {
-    const centerLat = station.latitude;
-    const centerLng = station.longitude;
-    const isCrit = station.risk_level === "CRITICAL" || (station.water_level >= station.danger_level);
-    const radiusKm = isCrit ? 4.8 : 3.2;
-    const elongation = 1.9;
-    const angleRad = Math.PI / 4; // 45 degrees along river valley
-
-    const kmPerLat = 111.0;
-    const kmPerLng = 111.0 * Math.cos((centerLat * Math.PI) / 180.0);
-    const numVertices = 16;
-    const ring = [];
-
-    for (let i = 0; i < numVertices; i++) {
-      const theta = (2 * Math.PI * i) / numVertices;
-      const variance = 1.0 + 0.24 * Math.sin(3 * theta) + 0.12 * Math.cos(5 * theta);
-      const xLocal = radiusKm * elongation * Math.cos(theta) * variance;
-      const yLocal = radiusKm * Math.sin(theta) * variance;
-      const xRot = xLocal * Math.cos(angleRad) - yLocal * Math.sin(angleRad);
-      const yRot = xLocal * Math.sin(angleRad) + yLocal * Math.cos(angleRad);
-
-      ring.push([
-        Number((centerLng + xRot / kmPerLng).toFixed(5)),
-        Number((centerLat + yRot / kmPerLat).toFixed(5))
-      ]);
-    }
-    ring.push(ring[0]); // Close polygon
-
-    return {
-      type: "Feature",
-      id: `est_${(station.key || station.location_name || 'station').replace(/\s+/g, '_')}`,
-      properties: {
-        id: `est_${(station.key || station.location_name || 'station').replace(/\s+/g, '_')}`,
-        name: `${station.location_name} (Estimated Inundation Basin)`,
-        state: station.state || "India",
-        district: station.district || "Regional Basin",
-        river_basin: station.river_basin || "River Basin",
-        river_name: station.river_name || "River",
-        latitude: centerLat,
-        longitude: centerLng,
-        severity: station.risk_level === "CRITICAL" ? "Critical" : "High",
-        risk_level: station.risk_level === "CRITICAL" ? "Critical" : "High",
-        rainfall: station.rainfall_24h_mm || 0,
-        water_level: station.water_level || 0,
-        affected_area_sqkm: isCrit ? 22.4 : 14.8,
-        timestamp: new Date().toISOString(),
-        date: new Date().toISOString().split("T")[0],
-        time: new Date().toTimeString().split(" ")[0],
-        data_source: "Estimated Flood Impact Area (Spatial Hydrological Buffer)",
-        source: "Estimated Flood Impact Area",
-        is_estimated: true,
-        description: `Hydrodynamic buffer computed from live gauge readings (${station.water_level}m) along ${station.river_name || 'river channel'}.`
-      },
-      geometry: {
-        type: "Polygon",
-        coordinates: [ring]
-      }
-    };
-  },
-
   /**
    * Requirement #4: Renders flood-effect areas on Leaflet GeoJSON layer with
    * color-coding, hover effects, and interactive popups.
+   * Authoritative data provided by backend API (FG-011).
    */
   renderFloodAreas(geojson, options = {}) {
     if (!floodImpactLayer) return;
@@ -1988,26 +2026,6 @@ const FloodDataService = {
     cachedFloodPolygons = [];
 
     const rawFeatures = geojson && Array.isArray(geojson.features) ? [...geojson.features] : [];
-
-    // Also include dynamic estimated buffers for active high-risk live stations (for Today period)
-    if (selectedTimePeriod === "today" && Array.isArray(rawStationsData)) {
-      const existingDistricts = new Set(rawFeatures.map(f => (f.properties?.district || '').toLowerCase()));
-      rawStationsData.forEach(st => {
-        const isDng = st.water_level >= st.danger_level;
-        const isWarn = st.water_level >= st.warning_level;
-        const isHigh = st.risk_level === "HIGH" || st.risk_level === "CRITICAL";
-
-        // Respect geographic filters
-        if (selectedState !== "all" && st.state && st.state.toLowerCase() !== selectedState.toLowerCase()) return;
-        if (selectedDistrict !== "all" && st.district && st.district.toLowerCase() !== selectedDistrict.toLowerCase()) return;
-        if (selectedBasin !== "all" && st.river_basin && st.river_basin.toLowerCase() !== selectedBasin.toLowerCase()) return;
-
-        if ((isDng || (isWarn && isHigh)) && !existingDistricts.has((st.district || '').toLowerCase())) {
-          rawFeatures.push(this.generateEstimatedFloodPolygon(st));
-          existingDistricts.add((st.district || '').toLowerCase());
-        }
-      });
-    }
 
     // Filter features by current state/district if not already filtered
     const features = rawFeatures.filter(f => {
@@ -2074,10 +2092,12 @@ const FloodDataService = {
         if (sev === "CRITICAL") criticalCount++;
         else if (sev === "HIGH") highCount++;
 
-        const isEstimated = (p.data_source && p.data_source.includes("Estimated")) || p.is_estimated;
+        const isEstimated = (p.data_source && p.data_source.includes("Estimated")) || p.is_estimated || p.provenance === "ESTIMATED";
         const sourceBadge = isEstimated
           ? `<span class="provenance-tag" style="background: rgba(234, 88, 12, 0.25); color: #FB923C; border: 1px solid #EA580C; font-size: 0.68rem; padding: 0.15rem 0.4rem; border-radius: 4px;">⚠️ Estimated Flood Impact Area</span>`
-          : `<span class="provenance-tag" style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid #10B981; font-size: 0.68rem; padding: 0.15rem 0.4rem; border-radius: 4px;">✅ Verified: ${p.data_source || 'Live CWC / ISRO'}</span>`;
+          : p.provenance === "OBSERVED"
+            ? `<span class="provenance-tag provenance-live">Observed: ${p.data_source || 'source recorded'}</span>`
+            : `<span class="provenance-tag provenance-sample">Reference scenario: ${p.data_source || 'not live flood extent'}</span>`;
 
         const bounds = layer.getBounds ? layer.getBounds() : null;
         const center = bounds ? bounds.getCenter() : { lat: p.latitude || 20, lng: p.longitude || 80 };

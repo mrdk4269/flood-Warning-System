@@ -48,10 +48,10 @@
 
         <!-- More Dropdown for Advanced & Admin Features -->
         <li class="nav-dropdown">
-          <a href="#" class="nav-link nav-dropdown-toggle" onclick="event.preventDefault()">
+          <button type="button" class="nav-link nav-dropdown-toggle" aria-expanded="false" aria-haspopup="true">
             <span>More</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </a>
+          </button>
           <div class="nav-dropdown-menu">
             <a href="/prediction" class="nav-dropdown-item">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m12 6 4 6h-8l4-6z"/></svg>
@@ -107,7 +107,7 @@
       <div class="map-search-wrapper">
         <div class="map-search-bar">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="map-search-input" type="text" class="map-search-input" placeholder="Search City, District, River, Shelter..." autocomplete="off">
+          <input id="map-search-input" type="text" class="map-search-input" placeholder="Search State, District, Station, Shelter..." autocomplete="off">
         </div>
         <div id="search-suggestions" class="search-suggestions-box"></div>
       </div>
@@ -186,11 +186,6 @@
             <label class="core-layer-item" style="font-size: 0.76rem;">
               <span><span class="layer-indicator" style="background: #38BDF8;"></span>State Boundaries</span>
               <input type="checkbox" id="toggle-state-boundaries">
-            </label>
-
-            <label class="core-layer-item" style="font-size: 0.76rem;">
-              <span><span class="layer-indicator" style="background: #94A3B8;"></span>District Boundaries</span>
-              <input type="checkbox" id="toggle-district-boundaries">
             </label>
 
             <label class="core-layer-item" style="font-size: 0.76rem;">

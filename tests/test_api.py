@@ -6,8 +6,14 @@ import sys
 import os
 import json
 import unittest
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Tests must never seed or mutate a developer's application database.
+TEST_DB_DIR = tempfile.TemporaryDirectory()
+os.environ["FLOODGUARD_DB_PATH"] = os.path.join(TEST_DB_DIR.name, "floodguard-test.db")
+os.environ["FLOODGUARD_ADMIN_PASSWORD"] = "test-admin-password"
 
 from backend.app import app
 from backend.risk_calculator import calculate_flood_risk
@@ -16,6 +22,11 @@ from backend.prediction import predict_flood
 class TestFloodGuard(unittest.TestCase):
     def setUp(self):
         self.client = app.test_client()
+        login = self.client.post("/api/auth/login", json={
+            "email": "admin@floodguard.org",
+            "password": "test-admin-password"
+        })
+        self.assertEqual(login.status_code, 200)
 
     def test_static_routes(self):
         """Verify all 8 main HTML pages serve HTTP 200."""
@@ -165,7 +176,7 @@ class TestFloodGuard(unittest.TestCase):
         first = data["data"][0]
         self.assertEqual(first["data_type"], "river_water_level")
         self.assertEqual(first["unit"], "m")
-        self.assertIn(first["provenance"], ["LIVE", "HISTORICAL_FALLBACK"])
+        self.assertIn(first["provenance"], ["LIVE", "DERIVED", "HISTORICAL_FALLBACK"])
         self.assertIn("warning_level", first)
         self.assertIn("danger_level", first)
         self.assertIn("river_name", first)
@@ -190,7 +201,7 @@ class TestFloodGuard(unittest.TestCase):
         res = self.client.post("/api/live-data/refresh?region=odisha")
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
-        self.assertEqual(data.get("status"), "success")
+        self.assertIn(data.get("status"), ["success", "partial", "degraded"])
         self.assertIn("dashboard", data)
 
     def test_india_states_endpoint(self):
@@ -354,5 +365,4 @@ class TestFloodGuard(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
 

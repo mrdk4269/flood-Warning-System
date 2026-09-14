@@ -199,12 +199,26 @@
     right: 0.75rem;
     top: 0.75rem;
     max-height: calc(100vh - 4.5rem);
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 
   .simple-map-controls.collapsed {
     transform: translateY(calc(-100% - 2rem));
     opacity: 0;
     pointer-events: none;
+  }
+
+  /* FG-014: Single active control surface - hide floating controls when panels/drawers open */
+  body.layers-panel-open .compact-timeline-bar,
+  body.layers-panel-open .right-floating-btn,
+  body.layers-panel-open .left-floating-btn,
+  body.layers-panel-open .timeline-summary-popover,
+  body.layers-panel-open .map-telemetry-hud,
+  body.drawer-open .compact-timeline-bar,
+  body.drawer-open .left-floating-btn,
+  body.drawer-open .timeline-summary-popover,
+  body.drawer-open .map-telemetry-hud {
+    display: none !important;
   }
 
   .helpline-grid {

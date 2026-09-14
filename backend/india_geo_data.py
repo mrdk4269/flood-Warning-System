@@ -938,6 +938,7 @@ def get_forecast_risk_geojson(state_filter: str = None) -> Dict[str, Any]:
             "type": "Feature",
             "properties": {
                 "zone_name": z["name"],
+                "feature_type": "forecast_alert_zone",
                 "state": z["state"],
                 "district": z["district"],
                 "basin": z["basin"],
@@ -945,7 +946,8 @@ def get_forecast_risk_geojson(state_filter: str = None) -> Dict[str, Any]:
                 "projected_rain_72h_mm": z["projected_rain_72h_mm"],
                 "valid_period": z["valid_period"],
                 "color": z["color"],
-                "provenance": "FORECAST"
+                "provenance": "FORECAST",
+                "geometry_note": "Approximate bounding-box alert zone, not a modelled inundation footprint."
             },
             "geometry": {
                 "type": "Polygon",

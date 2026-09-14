@@ -5,9 +5,9 @@ Flask REST API & Static File Server for GIS Early Warning Prototype.
 import os
 import json
 from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory, render_template_string
+from flask import Flask, request, jsonify, send_from_directory, session
 
-from backend.database import get_connection, init_database, hash_password
+from backend.database import get_connection, init_database, hash_password, verify_password
 from backend.risk_calculator import calculate_flood_risk, update_config, CONFIG
 from backend.prediction import predict_flood
 from backend.data_service import LiveDataService
@@ -31,14 +31,34 @@ FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
 app = Flask(__name__, static_folder=FRONTEND_DIR)
+app.config.update(
+    SECRET_KEY=os.environ.get("FLOODGUARD_SECRET_KEY") or os.urandom(32),
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
 
-# Enable CORS for all responses
+# The frontend is served by this application; do not expose privileged APIs cross-origin.
 @app.after_request
 def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    origin = request.headers.get("Origin")
+    if origin and origin == request.host_url.rstrip("/"):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Vary"] = "Origin"
     return response
+
+
+@app.before_request
+def protect_mutating_endpoints():
+    """Require an authenticated administrator for every state-changing API call."""
+    if request.method not in {"POST", "PUT", "DELETE", "PATCH"}:
+        return None
+    if request.path == "/api/auth/login":
+        return None
+    if not request.path.startswith("/api/"):
+        return None
+    if session.get("role") != "admin":
+        return jsonify({"error": "Administrator authentication is required for this action."}), 401
+    return None
 
 # Initialize database on module load
 init_database()
@@ -84,6 +104,8 @@ def serve_history():
 @app.route("/admin")
 @app.route("/admin.html")
 def serve_admin():
+    if session.get("role") != "admin":
+        return send_from_directory(FRONTEND_DIR, "admin-login.html"), 401
     return send_from_directory(FRONTEND_DIR, "admin.html")
 
 @app.route("/css/<path:filename>")
@@ -902,10 +924,30 @@ def api_live_data_refresh():
     basin = request.args.get("basin")
     data = LiveIndiaDataService.sync_and_cache_live_observations(region=region, force_refresh=True, state=state, district=district, basin=basin)
     dash = LiveIndiaDataService.get_live_dashboard(region=region, state=state, district=district, basin=basin)
+
+    # FG-005: Report truthful per-source status instead of always claiming success
+    fetch_meta = LiveIndiaDataService._CACHE.get("fetch_meta", {})
+    total = fetch_meta.get("total_stations", 0)
+    reached = fetch_meta.get("stations_reached", 0)
+    failed = fetch_meta.get("stations_failed", 0)
+    weather_fail = fetch_meta.get("weather_unavailable", 0)
+    river_fail = fetch_meta.get("river_unavailable", 0)
+
+    if reached == 0 and total > 0:
+        refresh_status = "failed"
+        refresh_msg = "All external API requests failed. Displaying stale or unavailable data."
+    elif failed > 0 or weather_fail > 0 or river_fail > 0:
+        refresh_status = "partial"
+        refresh_msg = f"Partial refresh: {reached}/{total} stations reached. Weather unavailable for {weather_fail}, river data unavailable for {river_fail}."
+    else:
+        refresh_status = "success"
+        refresh_msg = "Live telemetry refreshed from Open-Meteo APIs."
+
     return jsonify({
-        "status": "success",
-        "message": "Live telemetry refreshed from external APIs",
+        "status": refresh_status,
+        "message": refresh_msg,
         "refreshed_stations": len(data),
+        "fetch_health": fetch_meta,
         "dashboard": dash,
         "timestamp": datetime.now().isoformat()
     })
@@ -922,11 +964,17 @@ def login():
 
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE email = ? AND password_hash = ?", (email, hash_password(password)))
+    cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
     user = cursor.fetchone()
-    conn.close()
 
-    if user:
+    if user and verify_password(password, user["password_hash"]):
+        if not user["password_hash"].startswith("pbkdf2_sha256$"):
+            cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(password), user["id"]))
+            conn.commit()
+        conn.close()
+        session.clear()
+        session["user_id"] = user["id"]
+        session["role"] = user["role"]
         return jsonify({
             "status": "success",
             "user": {
@@ -936,8 +984,14 @@ def login():
                 "role": user["role"]
             }
         })
-    else:
-        return jsonify({"status": "error", "message": "Invalid email or password"}), 401
+    conn.close()
+    return jsonify({"status": "error", "message": "Invalid email or password"}), 401
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"status": "success"})
 
 if __name__ == "__main__":
     print("==================================================")

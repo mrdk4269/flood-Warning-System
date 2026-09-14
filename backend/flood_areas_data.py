@@ -76,7 +76,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 8.6,
         "affected_area_sqkm": 18.4,
         "days_ago": 0,  # TODAY
-        "data_source": "Live CWC Telemetry & IMD Doppler Radar",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Severe overbank discharge past Mundali Barrage inundating riparian agriculture and delta settlements.",
         "geometry": {
             "type": "Polygon",
@@ -110,7 +110,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 6.8,
         "affected_area_sqkm": 11.2,
         "days_ago": 3,  # LAST 7 DAYS
-        "data_source": "ISRO Bhuvan High-Resolution SAR Overlay",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Waterlogged estuarine paddies along the tidal reach of Baitarani River.",
         "geometry": {
             "type": "Polygon",
@@ -142,7 +142,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 9.4,
         "affected_area_sqkm": 24.6,
         "days_ago": 18,  # LAST 30 DAYS
-        "data_source": "NDMA State Disaster Response Feed",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Breached embankment levee during coastal monsoonal surge submerged multi-village block.",
         "geometry": {
             "type": "Polygon",
@@ -178,7 +178,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 50.85,
         "affected_area_sqkm": 32.5,
         "days_ago": 0,  # TODAY
-        "data_source": "Live CWC Gauge & Flood Forecasting Division",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Brahmaputra flowing 0.35m above danger level at Pandu Ghat; massive backwater ponding in low-lying peri-urban sectors.",
         "geometry": {
             "type": "Polygon",
@@ -210,7 +210,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 106.10,
         "affected_area_sqkm": 21.8,
         "days_ago": 2,  # LAST 7 DAYS
-        "data_source": "ISRO Bhuvan Disaster Remote Sensing WMS",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Erosion and flood inundation along Mohanaghat revetment submerging tea garden lowlands.",
         "geometry": {
             "type": "Polygon",
@@ -242,7 +242,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 20.25,
         "affected_area_sqkm": 16.4,
         "days_ago": 12,  # LAST 30 DAYS
-        "data_source": "CWC Hydrological Observation Network",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Betukandi dyke breach historical run-off inundating Annapurna Ghat commercial sector.",
         "geometry": {
             "type": "Polygon",
@@ -278,7 +278,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 49.80,
         "affected_area_sqkm": 28.2,
         "days_ago": 0,  # TODAY
-        "data_source": "Live CWC Middle Ganga Division & IMD Radar",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Digha Ghat gauge crossing danger benchmark; Gandak high inflow causing reverse ponding into Patna rural diara belt.",
         "geometry": {
             "type": "Polygon",
@@ -310,7 +310,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 72.40,
         "affected_area_sqkm": 25.0,
         "days_ago": 4,  # LAST 7 DAYS
-        "data_source": "ISRO Bhuvan Spatial Flood Hazard Layer",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Braided river overflow inundating low-lying embankment sandbars across Supaul rural blocks.",
         "geometry": {
             "type": "Polygon",
@@ -342,7 +342,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 50.10,
         "affected_area_sqkm": 14.8,
         "days_ago": 15,  # LAST 30 DAYS
-        "data_source": "Bihar Water Resources Department (WRD)",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Kamla Balan embankment pressure causing localized depression overflow into chaurs.",
         "geometry": {
             "type": "Polygon",
@@ -378,7 +378,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 7.45,
         "affected_area_sqkm": 19.5,
         "days_ago": 0,  # TODAY
-        "data_source": "Live Kerala State Disaster Management (KSDMA) & CWC",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Dam release spill from Bhoothathankettu causing heavy backwater inundation along Aluva Manappuram and riverine residential colonies.",
         "geometry": {
             "type": "Polygon",
@@ -410,7 +410,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 3.80,
         "affected_area_sqkm": 29.0,
         "days_ago": 5,  # LAST 7 DAYS
-        "data_source": "ISRO Bhuvan Space Application Centre (SAC)",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Paddy polders submerged under 2 meters of water due to Thanneermukkom bund spill block.",
         "geometry": {
             "type": "Polygon",
@@ -442,7 +442,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 6.10,
         "affected_area_sqkm": 12.0,
         "days_ago": 22,  # LAST 30 DAYS
-        "data_source": "Central Water Commission Hydrological Gauge",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Overland flow through low agricultural terraces during intense 24h cloudburst event.",
         "geometry": {
             "type": "Polygon",
@@ -478,7 +478,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 84.65,
         "affected_area_sqkm": 22.4,
         "days_ago": 1,  # TODAY / RECENT
-        "data_source": "Live CWC Northern Region & IMD Radar",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Yamuna and Ganga simultaneous swell submerging Baghmambari, Chhota Baghada, and coastal ghats.",
         "geometry": {
             "type": "Polygon",
@@ -510,7 +510,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 71.20,
         "affected_area_sqkm": 9.8,
         "days_ago": 6,  # LAST 7 DAYS
-        "data_source": "CWC Middle Ganga Division",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "River water submerged stepped platforms of all 84 historic ghats.",
         "geometry": {
             "type": "Polygon",
@@ -546,7 +546,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 28.90,
         "affected_area_sqkm": 26.5,
         "days_ago": 0,  # TODAY
-        "data_source": "Live CWC Eastern Division Telemetry",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Severe bank line collapse and backwater ponding inundating Harishchandrapur rural blocks.",
         "geometry": {
             "type": "Polygon",
@@ -578,7 +578,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 5.40,
         "affected_area_sqkm": 14.1,
         "days_ago": 14,  # LAST 30 DAYS
-        "data_source": "ISRO Bhuvan Spatial Flood Archive",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "High spring bore tide exacerbated by storm depression causing drain locking.",
         "geometry": {
             "type": "Polygon",
@@ -614,7 +614,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 43.50,
         "affected_area_sqkm": 27.8,
         "days_ago": 0,  # TODAY
-        "data_source": "Live Maharashtra WRD & CWC Krishna Division",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Radhanagari Dam automatic gates open; Rajaram barrage level crossing 43 ft danger line, submerging city link bridges.",
         "geometry": {
             "type": "Polygon",
@@ -646,7 +646,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 45.20,
         "affected_area_sqkm": 23.0,
         "days_ago": 4,  # LAST 7 DAYS
-        "data_source": "ISRO Bhuvan Spatial Flood Hazard Layer",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Almatti dam backwaters creating extensive pooling across Sangli and Miraj sugarcane belts.",
         "geometry": {
             "type": "Polygon",
@@ -682,7 +682,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 10.20,
         "affected_area_sqkm": 19.8,
         "days_ago": 3,  # LAST 7 DAYS
-        "data_source": "CWC Tapi Basin Organisation & Surat Municipal Corporation",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Ukai dam spill discharge exceeding 3.5 lakh cusecs combined with Arabian sea high tide.",
         "geometry": {
             "type": "Polygon",
@@ -718,7 +718,7 @@ NATIONWIDE_FLOOD_EFFECT_AREAS = [
         "water_level": 23.50,
         "affected_area_sqkm": 28.0,
         "days_ago": 26,  # LAST 30 DAYS
-        "data_source": "Jammu & Kashmir Irrigation & Flood Control Department (IFCD)",
+        "data_source": "Reference scenario (static demonstration data)", "provenance": "REFERENCE",
         "description": "Ram Munshi Bagh gauge crossing 21 ft danger mark; flood spill channel capacity overwhelmed.",
         "geometry": {
             "type": "Polygon",
@@ -763,12 +763,13 @@ def get_flood_effect_areas(
 ) -> List[Dict[str, Any]]:
     """
     Returns filtered list of flood effect areas matching temporal & geographic criteria.
+    Timestamps are computed once at module load and remain immutable (FG-012).
     - period: 'today', '7days', '30days', 'all'
     - state: State name or 'all'
     - district: District name or 'all'
     - basin: Basin name or 'all'
     """
-    _compute_timestamps()
+    # FG-012: Do NOT recompute timestamps — they were set at module load
     now_current = datetime.utcnow()
     cutoff_today = now_current.date()
     cutoff_7days = (now_current - timedelta(days=7)).date()
@@ -806,7 +807,102 @@ def get_flood_effect_areas(
 
         results.append(ev)
 
-    return results
+    # Cross-reference live station observations to inject real-time telemetry
+    try:
+        from backend.live_india_service import LiveIndiaDataService
+        live_map = LiveIndiaDataService.get_live_station_telemetry_map()
+    except Exception:
+        live_map = {}
+
+    enriched_results = []
+    existing_districts = set()
+
+    for ev in results:
+        ev_copy = dict(ev)
+        ev_copy["geometry"] = dict(ev["geometry"])
+        key = (ev.get("state", "").strip().lower(), ev.get("district", "").strip().lower())
+        existing_districts.add(key)
+
+        if key in live_map:
+            live = live_map[key]
+            # If live rainfall or river level is available, inject real-time telemetry
+            if live.get("rainfall") is not None and live["rainfall"] > 0:
+                ev_copy["rainfall"] = round(float(live["rainfall"]), 1)
+            if live.get("water_level") is not None and live["water_level"] > 0:
+                ev_copy["water_level"] = round(float(live["water_level"]), 2)
+            if live.get("warning_active"):
+                ev_copy["severity"] = "Critical" if live.get("risk_level") == "CRITICAL" else "High"
+                ev_copy["risk_level"] = ev_copy["severity"]
+            ev_copy["data_source"] = f"Reference scenario enriched with Open-Meteo telemetry ({live.get('provenance', 'UNAVAILABLE')})"
+            ev_copy["provenance"] = "REFERENCE"
+
+        enriched_results.append(ev_copy)
+
+    # For TODAY: if any live station has an active warning / danger river level, synthesize an organic flood polygon
+    if period in ["today", "all"]:
+        try:
+            from backend.live_india_service import LiveIndiaDataService
+            cached_data = LiveIndiaDataService._CACHE.get("data") or []
+            for t in cached_data:
+                riv = t.get("river", {})
+                fw = t.get("flood_warning", {})
+                is_danger = riv.get("river_state") == "DANGER"
+                is_warn = riv.get("river_state") == "WARNING"
+                is_high = fw.get("risk_level") in ["HIGH", "CRITICAL"]
+
+                if is_danger or (is_warn and is_high):
+                    st_state = t.get("state", "").strip()
+                    st_dist = t.get("district", "").strip()
+                    key = (st_state.lower(), st_dist.lower())
+
+                    if key not in existing_districts:
+                        # Check filters
+                        if state and state.lower() != "all" and st_state.lower() != state.lower():
+                            continue
+                        if district and district.lower() != "all" and st_dist.lower() != district.lower():
+                            continue
+                        if basin and basin.lower() != "all" and t.get("river_basin", "").lower() != basin.lower():
+                            continue
+
+                        # Generate dynamic riparian polygon around the elevated river gauge
+                        lat = float(t.get("latitude"))
+                        lon = float(t.get("longitude"))
+                        radius_km = 4.8 if is_danger else 3.2
+                        coords = generate_riparian_flood_polygon(lat, lon, radius_km=radius_km, elongation=2.0)
+
+                        dynamic_ev = {
+                            "id": f"flood_live_{t.get('key', 'gauge')}",
+                            "name": f"{t.get('location_name', st_dist)} (Live Inundation Reach)",
+                            "state": st_state,
+                            "district": st_dist,
+                            "river_basin": t.get("river_basin", "River Basin"),
+                            "river_name": t.get("river_name", "River"),
+                            "latitude": lat,
+                            "longitude": lon,
+                            "severity": "Critical" if is_danger else "High",
+                            "risk_level": "Critical" if is_danger else "High",
+                            "rainfall": round(float(t.get("rainfall", {}).get("value", 0.0)), 1),
+                            "water_level": round(float(riv.get("value", 0.0)), 2),
+                            "affected_area_sqkm": round(math.pi * (radius_km ** 2) * 1.5, 1),
+                            "days_ago": 0,
+                            "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            "date": datetime.utcnow().strftime("%Y-%m-%d"),
+                            "time": datetime.utcnow().strftime("%H:%M:%S"),
+                            "data_source": "Estimated buffer from Open-Meteo-derived discharge and FloodGuard rule thresholds",
+                            "provenance": "ESTIMATED",
+                            "is_estimated": True,
+                            "description": f"Estimated impact buffer: calculated river level ({riv.get('value')}m) exceeded {riv.get('river_state')} threshold along {t.get('river_name', 'river basin')}. This is not an observed flood extent.",
+                            "geometry": {
+                                "type": "Polygon",
+                                "coordinates": [coords]
+                            }
+                        }
+                        enriched_results.append(dynamic_ev)
+                        existing_districts.add(key)
+        except Exception:
+            pass
+
+    return enriched_results
 
 def get_flood_effect_geojson(
     period: str = "today", 
@@ -843,6 +939,8 @@ def get_flood_effect_geojson(
                 "time": ev["time"],
                 "data_source": ev["data_source"],
                 "source": ev["data_source"],
+                "provenance": ev.get("provenance", "REFERENCE"),
+                "is_estimated": ev.get("is_estimated", False),
                 "description": ev["description"]
             },
             "geometry": ev["geometry"]
@@ -856,7 +954,7 @@ def get_flood_effect_geojson(
             "state_filter": state or "all",
             "district_filter": district or "all",
             "count": len(features),
-            "generated_at": NOW.strftime("%Y-%m-%dT%H:%M:%SZ")
+            "generated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         },
         "features": features
     }

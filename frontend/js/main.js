@@ -6,6 +6,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   initLiveClock();
   initMobileNav();
+  initNavDropdown();
   updateNavAlertBadge();
   highlightActiveNavLink();
   initIncidentTicker();
@@ -25,7 +26,7 @@ function initLiveClock() {
   setInterval(updateClock, 1000);
 }
 
-// Live Incident Ticker updates
+// Live Incident Ticker updates (FG-010 XSS safe)
 async function initIncidentTicker() {
   const tickerContainer = document.getElementById("incident-ticker-text");
   if (!tickerContainer) return;
@@ -33,14 +34,55 @@ async function initIncidentTicker() {
   try {
     const stats = await API.getStats();
     if (stats.latest_alert) {
-      tickerContainer.innerHTML = `
-        <span class="ticker-tag">${stats.latest_alert.risk_level}</span>
-        <strong>${stats.latest_alert.title}</strong> — ${stats.latest_alert.location}
-      `;
+      tickerContainer.textContent = "";
+      const tagSpan = document.createElement("span");
+      tagSpan.className = "ticker-tag";
+      tagSpan.textContent = stats.latest_alert.risk_level || "ALERT";
+      const strongEl = document.createElement("strong");
+      strongEl.textContent = stats.latest_alert.title || "";
+      tickerContainer.appendChild(tagSpan);
+      tickerContainer.appendChild(document.createTextNode(" "));
+      tickerContainer.appendChild(strongEl);
+      tickerContainer.appendChild(document.createTextNode(` — ${stats.latest_alert.location || ""}`));
     }
   } catch (e) {
     // default ticker
   }
+}
+
+// Accessible Navigation Dropdown (FG-018)
+function initNavDropdown() {
+  const dropdownToggle = document.querySelector(".nav-dropdown-toggle");
+  const dropdownMenu = document.querySelector(".nav-dropdown-menu");
+  if (!dropdownToggle || !dropdownMenu) return;
+
+  function setExpanded(val) {
+    dropdownToggle.setAttribute("aria-expanded", String(val));
+    if (val) {
+      dropdownMenu.classList.add("show");
+    } else {
+      dropdownMenu.classList.remove("show");
+    }
+  }
+
+  dropdownToggle.addEventListener("click", (e) => {
+    e.preventDefault();
+    const isOpen = dropdownMenu.classList.contains("show");
+    setExpanded(!isOpen);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!dropdownToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+      setExpanded(false);
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && dropdownMenu.classList.contains("show")) {
+      setExpanded(false);
+      dropdownToggle.focus();
+    }
+  });
 }
 
 // Mobile Navigation Toggle

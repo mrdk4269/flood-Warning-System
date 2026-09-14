@@ -799,13 +799,13 @@ class LiveIndiaDataService:
             "river_name": st_conf["river_name"],
             "elevation_m": st_conf["elevation_m"],
             "distance_to_river_m": st_conf["dist_to_river_m"],
-            "water_level": calculated_water_level_m if river_status == "AVAILABLE" else round(st_conf["warning_level_m"] * 0.78, 2),
-            "value": calculated_water_level_m if river_status == "AVAILABLE" else round(st_conf["warning_level_m"] * 0.78, 2),
+            "water_level": calculated_water_level_m if river_status == "AVAILABLE" else None,
+            "value": calculated_water_level_m if river_status == "AVAILABLE" else None,
             "unit": "m",
             "warning_level": st_conf["warning_level_m"],
             "danger_level": st_conf["danger_level_m"],
-            "rainfall_24h_mm": rain_24h if weather_status == "AVAILABLE" else 15.0,
-            "precipitation_mm": current_rain if weather_status == "AVAILABLE" else 0.0,
+            "rainfall_24h_mm": rain_24h if weather_status == "AVAILABLE" else None,
+            "precipitation_mm": current_rain if weather_status == "AVAILABLE" else None,
             "rainfall_intensity": "Heavy" if rain_24h >= 65 else ("Moderate" if rain_24h >= 15 else "Light"),
             "risk_score": risk_eval["risk_score"],
             "risk_level": risk_eval["risk_level"],
@@ -816,8 +816,8 @@ class LiveIndiaDataService:
             "observation_time": now_utc,
             "last_updated": now_utc,
             "last_updated_time": now_utc,
-            "source": "Open-Meteo & Integrated Hydrological Network",
-            "provenance": "LIVE" if weather_status == "AVAILABLE" else "HISTORICAL_FALLBACK",
+            "source": "Open-Meteo inputs and FloodGuard derived values",
+            "provenance": "DERIVED" if weather_status == "AVAILABLE" or river_status == "AVAILABLE" else "UNAVAILABLE",
 
             # 13-field Rainfall Observation (Requirement #11)
             "rainfall": {
@@ -830,11 +830,11 @@ class LiveIndiaDataService:
                 "location": location_name,
                 "latitude": st_conf["latitude"],
                 "longitude": st_conf["longitude"],
-                "value": rain_24h if weather_status == "AVAILABLE" else 15.0,
+                "value": rain_24h if weather_status == "AVAILABLE" else None,
                 "unit": "mm",
-                "current_precipitation_mm": current_rain if weather_status == "AVAILABLE" else 0.0,
-                "source": "Open-Meteo & IMD AWS Open Grid",
-                "provenance": "LIVE" if weather_status == "AVAILABLE" else "HISTORICAL_FALLBACK",
+                "current_precipitation_mm": current_rain if weather_status == "AVAILABLE" else None,
+                "source": "Open-Meteo forecast API",
+                "provenance": "LIVE" if weather_status == "AVAILABLE" else "UNAVAILABLE",
                 "observation_time": now_utc,
                 "last_updated": now_utc,
                 "last_updated_time": now_utc,
@@ -861,8 +861,8 @@ class LiveIndiaDataService:
                 "wind_speed_kmh": wind_kmh,
                 "weather_code": w_code,
                 "weather_desc": LiveIndiaDataService._weather_code_to_text(w_code),
-                "source": "Open-Meteo & ECMWF Integrated Weather Service",
-                "provenance": "LIVE" if weather_status == "AVAILABLE" else "HISTORICAL_FALLBACK",
+                "source": "Open-Meteo forecast API",
+                "provenance": "LIVE" if weather_status == "AVAILABLE" else "UNAVAILABLE",
                 "observation_time": now_utc,
                 "last_updated": now_utc,
                 "last_updated_time": now_utc,
@@ -882,14 +882,14 @@ class LiveIndiaDataService:
                 "latitude": st_conf["latitude"],
                 "longitude": st_conf["longitude"],
                 "river_name": st_conf["river_name"],
-                "value": calculated_water_level_m if river_status == "AVAILABLE" else round(st_conf["warning_level_m"] * 0.78, 2),
+                "value": calculated_water_level_m if river_status == "AVAILABLE" else None,
                 "unit": "m",
                 "warning_level": st_conf["warning_level_m"],
                 "danger_level": st_conf["danger_level_m"],
                 "river_discharge_m3s": current_discharge_m3s,
                 "river_state": river_state,
-                "source": "Open-Meteo Global Flood API & CWC Basin Gauge Network",
-                "provenance": "LIVE" if river_status == "AVAILABLE" else "HISTORICAL_FALLBACK",
+                "source": "Open-Meteo Global Flood API (derived station stage estimate)",
+                "provenance": "DERIVED" if river_status == "AVAILABLE" else "UNAVAILABLE",
                 "observation_time": now_utc,
                 "last_updated": now_utc,
                 "last_updated_time": now_utc,
@@ -916,7 +916,7 @@ class LiveIndiaDataService:
                 "advisory": risk_eval["action_advisory"],
                 "breakdown": risk_eval.get("breakdown", {}),
                 "source": "FloodGuard Decision Support Rule Engine & Multi-Factor Hydro Analysis",
-                "provenance": "LIVE",
+                "provenance": "DERIVED" if weather_status == "AVAILABLE" or river_status == "AVAILABLE" else "UNAVAILABLE",
                 "observation_time": now_utc,
                 "last_updated": now_utc,
                 "last_updated_time": now_utc,
@@ -971,6 +971,8 @@ class LiveIndiaDataService:
         else:
             # Fetch in parallel across all monitored stations
             all_telemetry = []
+            fetch_success = 0
+            fetch_fail = 0
             with ThreadPoolExecutor(max_workers=10) as executor:
                 future_to_station = {
                     executor.submit(cls.fetch_station_telemetry, st_key, st_conf): (st_key, st_conf)
@@ -981,12 +983,31 @@ class LiveIndiaDataService:
                         res = fut.result()
                         if res:
                             all_telemetry.append(res)
+                            fetch_success += 1
+                        else:
+                            fetch_fail += 1
                     except Exception:
-                        pass
+                        fetch_fail += 1
+
+            # Track fetch health metadata for the refresh endpoint
+            weather_ok = sum(1 for t in all_telemetry if t.get("rainfall", {}).get("status") == "AVAILABLE")
+            weather_fail = sum(1 for t in all_telemetry if t.get("rainfall", {}).get("status") == "UNAVAILABLE")
+            river_ok = sum(1 for t in all_telemetry if t.get("river", {}).get("status") == "AVAILABLE")
+            river_fail = sum(1 for t in all_telemetry if t.get("river", {}).get("status") == "UNAVAILABLE")
 
             # Update cache
             cls._CACHE["data"] = all_telemetry
             cls._CACHE["timestamp"] = now_ts
+            cls._CACHE["fetch_meta"] = {
+                "total_stations": len(MONITORED_STATIONS),
+                "stations_reached": fetch_success,
+                "stations_failed": fetch_fail,
+                "weather_available": weather_ok,
+                "weather_unavailable": weather_fail,
+                "river_available": river_ok,
+                "river_unavailable": river_fail,
+                "fetched_at": datetime.now(timezone.utc).isoformat()
+            }
 
             # Database audit log cache
             try:
@@ -1024,6 +1045,14 @@ class LiveIndiaDataService:
                             "state": riv.get("river_state")
                         })
                     ))
+
+                # FG-021: Enforce retention limit — keep only last 500 rows per data_type
+                cursor.execute("""
+                    DELETE FROM live_observations_cache
+                    WHERE id NOT IN (
+                        SELECT id FROM live_observations_cache ORDER BY id DESC LIMIT 1000
+                    )
+                """)
 
                 conn.commit()
                 conn.close()
@@ -1083,32 +1112,32 @@ class LiveIndiaDataService:
                 "rainfall": {
                     "operational": weather_online or has_cached,
                     "status": "Available" if (weather_online or has_cached) else "Unavailable",
-                    "source": "Open-Meteo & IMD AWS Open Station Grid",
+                    "source": "Open-Meteo Forecast API (precipitation data)",
                     "reason": None if (weather_online or has_cached) else "Meteorological feed timeout or rate-limited"
                 },
                 "weather": {
                     "operational": weather_online or has_cached,
                     "status": "Available" if (weather_online or has_cached) else "Unavailable",
-                    "source": "Open-Meteo Integrated Forecast Model (ECMWF)",
+                    "source": "Open-Meteo Forecast API (ECMWF model)",
                     "reason": None if (weather_online or has_cached) else "Atmospheric model feed unreachable"
                 },
                 "river_water_level": {
                     "operational": river_online or has_cached,
                     "status": "Available" if (river_online or has_cached) else "Unavailable",
-                    "source": "Open-Meteo Global Flood API & CWC Gauge Network",
+                    "source": "Open-Meteo Global Flood API (derived stage estimate)",
                     "reason": None if (river_online or has_cached) else "River discharge service unreachable"
                 },
                 "flood_warning_engine": {
                     "operational": True,
                     "status": "Available",
-                    "source": "FloodGuard Multi-Factor Hydro Risk Engine",
+                    "source": "FloodGuard Rule-Based Risk Engine (decision support only)",
                     "reason": None
                 },
                 "satellite_imagery": {
                     "operational": True,
-                    "status": "Available",
-                    "source": "NASA GIBS (Terra/MODIS Daily) & ISRO Bhuvan (NRSC Space WMS)",
-                    "reason": None
+                    "status": "Tile Overlay Only",
+                    "source": "NASA GIBS & ISRO Bhuvan (map tile overlays; not ingested flood observations)",
+                    "reason": "Satellite tiles are visual reference layers, not processed flood extent data"
                 }
             },
             "monitored_basins": list(MAJOR_RIVER_BASINS.keys()),
@@ -1172,10 +1201,10 @@ class LiveIndiaDataService:
             "last_updated_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
             "active_stations_count": len(telemetry),
             "data_sources": [
-                "Open-Meteo Live Precipitation & ECMWF Forecast",
-                "Open-Meteo Global Flood API & CWC Gauge Network",
-                "NASA GIBS Daily Orbit Reflectance",
-                "ISRO Bhuvan NRSC Disaster Remote Sensing WMS"
+                "Open-Meteo Forecast API (precipitation & weather)",
+                "Open-Meteo Global Flood API (river discharge estimates)",
+                "NASA GIBS (map tile overlay — visual reference only)",
+                "ISRO Bhuvan (map tile overlay — visual reference only)"
             ],
             "subsystems": status_info["subsystems"],
             "basin_summary": {
@@ -1301,3 +1330,37 @@ class LiveIndiaDataService:
             "historical_disasters_count": len(HISTORICAL_FLOOD_EVENTS)
         }
 
+    @classmethod
+    def get_live_station_telemetry_map(cls) -> Dict[tuple, Dict[str, Any]]:
+        """
+        Returns a dictionary mapping (state.lower(), district.lower()) to live observation data:
+        rainfall_24h_mm, water_level, risk_level, river_state, warning_active.
+        """
+        telemetry = cls._CACHE.get("data")
+        if not telemetry:
+            telemetry = cls.sync_and_cache_live_observations()
+            
+        st_map = {}
+        for t in telemetry:
+            st_name = t.get("state", "").strip().lower()
+            dist_name = t.get("district", "").strip().lower()
+            key = (st_name, dist_name)
+            
+            st_map[key] = {
+                "key": t.get("key"),
+                "location_name": t.get("location_name"),
+                "state": t.get("state"),
+                "district": t.get("district"),
+                "river_basin": t.get("river_basin"),
+                "river_name": t.get("river_name"),
+                "latitude": t.get("latitude"),
+                "longitude": t.get("longitude"),
+                "rainfall": t.get("rainfall", {}).get("value", 0.0),
+                "water_level": t.get("river", {}).get("value", 0.0),
+                "risk_level": t.get("flood_warning", {}).get("risk_level", "LOW"),
+                "river_state": t.get("river", {}).get("river_state", "NORMAL"),
+                "warning_active": t.get("flood_warning", {}).get("warning_active", False),
+                "provenance": t.get("rainfall", {}).get("provenance", "LIVE"),
+                "observation_time": t.get("rainfall", {}).get("observation_time", datetime.utcnow().isoformat())
+            }
+        return st_map

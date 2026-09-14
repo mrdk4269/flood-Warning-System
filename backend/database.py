@@ -7,9 +7,14 @@ import sqlite3
 import json
 import os
 import hashlib
+import hmac
+import secrets
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database", "floodguard.db")
+DB_PATH = os.environ.get(
+    "FLOODGUARD_DB_PATH",
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "database", "floodguard.db"),
+)
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 
 def get_connection():
@@ -18,8 +23,23 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+def hash_password(password: str, salt: str | None = None) -> str:
+    """Return a salted PBKDF2 password record suitable for local accounts."""
+    salt = salt or secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 310_000)
+    return f"pbkdf2_sha256$310000${salt}${digest.hex()}"
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Verify PBKDF2 records and retain read-only compatibility with old seed data."""
+    if stored_hash.startswith("pbkdf2_sha256$"):
+        try:
+            _, iterations, salt, expected = stored_hash.split("$", 3)
+            actual = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), int(iterations)).hex()
+            return hmac.compare_digest(actual, expected)
+        except (TypeError, ValueError):
+            return False
+    return hmac.compare_digest(hashlib.sha256(password.encode("utf-8")).hexdigest(), stored_hash)
 
 def init_database():
     """Create all tables and seed initial data if empty."""
@@ -158,18 +178,17 @@ def init_database():
     """)
     conn.commit()
 
-    # Seed Admin User if not present
+    # Seed a development administrator only when its password is explicitly supplied.
+    # Production deployments must provision users through a controlled admin process.
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("""
-            INSERT INTO users (name, email, password_hash, role)
-            VALUES (?, ?, ?, ?)
-        """, ("FloodGuard Administrator", "admin@floodguard.org", hash_password("admin123"), "admin"))
-        cursor.execute("""
-            INSERT INTO users (name, email, password_hash, role)
-            VALUES (?, ?, ?, ?)
-        """, ("Public Safety Officer", "officer@floodguard.org", hash_password("safety2026"), "user"))
-        conn.commit()
+        admin_password = os.environ.get("FLOODGUARD_ADMIN_PASSWORD")
+        if admin_password:
+            cursor.execute("""
+                INSERT INTO users (name, email, password_hash, role)
+                VALUES (?, ?, ?, ?)
+            """, ("FloodGuard Administrator", "admin@floodguard.org", hash_password(admin_password), "admin"))
+            conn.commit()
 
     # Seed Flood Areas from GeoJSON
     cursor.execute("SELECT COUNT(*) FROM flood_areas")

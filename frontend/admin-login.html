@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administrator Sign In | FloodGuard</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+  <main class="container" style="min-height: 100vh; display: grid; place-items: center; padding: 2rem 1rem;">
+    <section class="card tactical-box" style="width: min(100%, 430px);">
+      <p class="mono" style="color: #38BDF8; font-size: .75rem; font-weight: 700; margin-bottom: .5rem;">RESTRICTED ACCESS</p>
+      <h1 style="font-size: 1.8rem; margin-bottom: .5rem;">Administrator sign in</h1>
+      <p style="margin-bottom: 1.5rem;">Use an account provisioned by your FloodGuard deployment administrator.</p>
+      <form id="admin-login-form">
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-input" id="email" name="email" type="email" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-input" id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <p id="login-error" role="alert" style="display: none; color: #FCA5A5; font-size: .85rem;"></p>
+        <button class="btn btn-primary" type="submit" style="width: 100%;">Sign in</button>
+      </form>
+      <p style="margin-top: 1rem; font-size: .78rem; color: #94A3B8;">Set <code>FLOODGUARD_ADMIN_PASSWORD</code> before first startup to provision the local administrator.</p>
+      <a href="/" class="btn btn-secondary" style="width: 100%; margin-top: .75rem; text-align: center;">Return to safety portal</a>
+    </section>
+  </main>
+  <script src="/js/api.js"></script>
+  <script>
+    document.getElementById('admin-login-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const error = document.getElementById('login-error');
+      error.style.display = 'none';
+      try {
+        const result = await API.login(event.currentTarget.email.value, event.currentTarget.password.value);
+        if (result.user?.role !== 'admin') throw new Error('This account does not have administrator access.');
+        window.location.assign('/admin');
+      } catch (err) {
+        error.textContent = err.message || 'Sign in failed.';
+        error.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

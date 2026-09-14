@@ -41,6 +41,16 @@ function getPriorityRank(level) {
   return 4;
 }
 
+function escapeHtml(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function renderAlertCards(alerts) {
   const container = document.getElementById("alerts-container");
   if (!container) return;
@@ -63,7 +73,7 @@ function renderAlertCards(alerts) {
     container.innerHTML = `
       <div class="card" style="text-align:center; padding: 3rem;">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" style="margin: 0 auto 1rem auto;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        <h3>No Active Warnings for Filter: ${currentFilter}</h3>
+        <h3>No Active Warnings for Filter: ${escapeHtml(currentFilter)}</h3>
         <p style="margin-top: 0.5rem; color: var(--text-secondary);">All monitored river basins and flood zones in this category are operating within nominal thresholds.</p>
       </div>
     `;
@@ -79,6 +89,12 @@ function renderAlertCards(alerts) {
     const riskColor = isCrit ? "#EF4444" : (isHigh ? "#F97316" : (lvl === "MEDIUM" ? "#F59E0B" : "#10B981"));
     const floodWindow = isCrit ? "Next 2–4 Hours" : (isHigh ? "Next 4–6 Hours" : "Next 6–12 Hours");
 
+    const safeLocation = escapeHtml(a.location || "Monitored River Basin");
+    const safeTitle = escapeHtml(a.title || "");
+    const safeDesc = escapeHtml(a.description || "");
+    const safeDate = escapeHtml(a.date || "Today");
+    const safeTime = escapeHtml(a.time || "Real-time");
+
     return `
       <div class="alert-card ${lvl.toLowerCase()}" style="margin-bottom: 1.25rem; border-left: 4px solid ${riskColor}; background: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-md);">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
@@ -86,19 +102,19 @@ function renderAlertCards(alerts) {
             <span class="badge ${badgeCls}" style="font-weight:800; font-size:0.75rem;">${lvl} FLOOD ALERT</span>
             <span style="font-size:0.72rem; color:#10B981; font-family:var(--font-mono); font-weight:700;">● Active Dispatch</span>
           </div>
-          <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-muted);">${a.date || 'Today'} • ${a.time || 'Real-time'}</span>
+          <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-muted);">${safeDate} • ${safeTime}</span>
         </div>
 
         <h2 style="font-size: 1.4rem; font-weight: 800; color: #FFFFFF; margin: 0.35rem 0;">
-          ${a.location || "Monitored River Basin"}
+          ${safeLocation}
         </h2>
 
         <div style="font-size: 0.95rem; color: ${riskColor}; font-weight: 700; margin-bottom: 0.5rem;">
-          ${a.title}
+          ${safeTitle}
         </div>
 
         <p style="color: #CBD5E1; font-size: 0.9rem; line-height: 1.55; margin-bottom: 0.95rem;">
-          ${a.description}
+          ${safeDesc}
         </p>
 
         <!-- Citizen-friendly threat timeline -->
@@ -109,7 +125,7 @@ function renderAlertCards(alerts) {
 
         <!-- 2 Clear Action Buttons -->
         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-          <a href="/map?focus=${encodeURIComponent(a.location)}" class="btn btn-sm btn-primary" style="display:flex; align-items:center; gap:0.35rem;">
+          <a href="/map?focus=${encodeURIComponent(a.location || '')}" class="btn btn-sm btn-primary" style="display:flex; align-items:center; gap:0.35rem;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
             <span>View on Map</span>
           </a>

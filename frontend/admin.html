@@ -61,10 +61,10 @@
 
         <!-- More Dropdown -->
         <li class="nav-dropdown">
-          <a href="#" class="nav-link nav-dropdown-toggle active" onclick="event.preventDefault()">
+          <button type="button" class="nav-link nav-dropdown-toggle active" aria-expanded="false" aria-haspopup="true">
             <span>More</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </a>
+          </button>
           <div class="nav-dropdown-menu">
             <a href="/prediction" class="nav-dropdown-item">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m12 6 4 6h-8l4-6z"/></svg>
@@ -392,16 +392,26 @@
       }
     }
 
+    function escapeHtml(str) {
+      if (str == null) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
     async function loadAdminFloodAreas() {
       try {
         const areas = await API.getFloodAreas();
         const tbody = document.getElementById("adm-flood-areas-tbody");
         tbody.innerHTML = areas.map(a => `
           <tr>
-            <td><strong>${a.area_name}</strong></td>
+            <td><strong>${escapeHtml(a.area_name)}</strong></td>
             <td>${renderRiskBadge(a.risk_level)}</td>
-            <td class="mono">${a.rainfall} mm</td>
-            <td class="mono">${a.water_level} m</td>
+            <td class="mono">${escapeHtml(a.rainfall)} mm</td>
+            <td class="mono">${escapeHtml(a.water_level)} m</td>
             <td>
               <button class="btn btn-sm btn-danger" onclick="deleteArea(${a.id})">Delete</button>
             </td>
@@ -430,13 +440,13 @@
         const tbody = document.getElementById("adm-rivers-tbody");
         tbody.innerHTML = rivers.map(r => `
           <tr>
-            <td><strong>${r.river_name}</strong></td>
+            <td><strong>${escapeHtml(r.river_name)}</strong></td>
             <td>
               <input type="number" id="riv-lvl-${r.id}" class="form-input mono" style="width:90px; display:inline-block;" value="${r.water_level}" step="0.1">
             </td>
-            <td class="mono">${r.warning_level} m</td>
-            <td class="mono">${r.danger_level} m</td>
-            <td><span class="badge ${r.status === 'DANGER' ? 'badge-critical' : (r.status === 'WARNING' ? 'badge-medium' : 'badge-low')}">${r.status}</span></td>
+            <td class="mono">${escapeHtml(r.warning_level)} m</td>
+            <td class="mono">${escapeHtml(r.danger_level)} m</td>
+            <td><span class="badge ${r.status === 'DANGER' ? 'badge-critical' : (r.status === 'WARNING' ? 'badge-medium' : 'badge-low')}">${escapeHtml(r.status)}</span></td>
             <td>
               <button class="btn btn-sm btn-primary" onclick="updateRiverLevel(${r.id})">Update</button>
             </td>
@@ -467,10 +477,10 @@
         const tbody = document.getElementById("adm-alerts-tbody");
         tbody.innerHTML = alerts.map(a => `
           <tr>
-            <td><strong>${a.title}</strong></td>
-            <td>${a.location}</td>
+            <td><strong>${escapeHtml(a.title)}</strong></td>
+            <td>${escapeHtml(a.location)}</td>
             <td>${renderRiskBadge(a.risk_level)}</td>
-            <td><span class="mono" style="color: ${a.status === 'ACTIVE' ? '#EF4444' : '#10B981'};">● ${a.status}</span></td>
+            <td><span class="mono" style="color: ${a.status === 'ACTIVE' ? '#EF4444' : '#10B981'};">● ${escapeHtml(a.status)}</span></td>
             <td>
               <button class="btn btn-sm btn-secondary" onclick="toggleAlertStatus(${a.id}, '${a.status === 'ACTIVE' ? 'RESOLVED' : 'ACTIVE'}')">
                 ${a.status === 'ACTIVE' ? 'Resolve' : 'Reactivate'}
@@ -513,11 +523,11 @@
         const tbody = document.getElementById("adm-shelters-tbody");
         tbody.innerHTML = shelters.map(s => `
           <tr>
-            <td><strong>${s.location_name}</strong></td>
-            <td><span class="badge badge-low">${s.type}</span></td>
-            <td class="mono">${s.capacity} People</td>
-            <td>${s.contact}</td>
-            <td><span class="mono" style="color:#10B981;">● ${s.status}</span></td>
+            <td><strong>${escapeHtml(s.location_name)}</strong></td>
+            <td><span class="badge badge-low">${escapeHtml(s.type)}</span></td>
+            <td class="mono">${escapeHtml(s.capacity)} People</td>
+            <td>${escapeHtml(s.contact)}</td>
+            <td><span class="mono" style="color:#10B981;">● ${escapeHtml(s.status)}</span></td>
           </tr>
         `).join("");
       } catch (e) {
