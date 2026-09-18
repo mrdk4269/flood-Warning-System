@@ -52,7 +52,6 @@ let cachedFloodPolygons = [];      // Cached flood zone polygons for risk estima
 let selectedTimePeriod = "today";   // "today" | "7days" | "30days"
 let cachedAlertData = [];           // All alerts fetched from /api/alerts
 let cachedFloodAreasDbData = [];    // All flood areas from /api/flood-areas with timestamps
-let timelineFloodEventsLayer = null; // Dedicated layer for timeline flood event markers
 
 // Static GeoJSON caches for regional filtering (FG-008)
 let cachedHistoricalFloodsGeo = null;
@@ -62,6 +61,7 @@ let cachedHospitalsGeo = null;
 let cachedRiskZonesGeo = null;
 
 function escapeHtml(str) {
+  if (typeof window.escapeHtml === "function") return window.escapeHtml(str);
   if (str == null) return "";
   return String(str)
     .replace(/&/g, "&amp;")
@@ -70,6 +70,18 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+
+window.handleRouteBtnClick = function(btn) {
+  if (!btn) return;
+  const lat = parseFloat(btn.getAttribute("data-lat"));
+  const lng = parseFloat(btn.getAttribute("data-lng"));
+  const name = btn.getAttribute("data-name") || "Location";
+  if (!isNaN(lat) && !isNaN(lng)) {
+    if (typeof drawEvacuationRouteTo === "function") {
+      drawEvacuationRouteTo(lat, lng, name);
+    }
+  }
+};
 
 function matchesRegionFilter(props) {
   if (!props) return true;
@@ -120,6 +132,7 @@ function getRiskColor(risk) {
 }
 
 function renderRiskBadge(level) {
+  if (typeof window.renderRiskBadge === "function") return window.renderRiskBadge(level);
   const l = (level || "LOW").toUpperCase();
   const cls = l === "CRITICAL" ? "badge-critical" :
               l === "HIGH" ? "badge-high" :
@@ -231,7 +244,7 @@ function createShelterPopupHtml(data) {
       </div>
 
       <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; font-weight: 700;">Distance:</span>
+        <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; font-weight: 700;">Location / Elevation:</span>
         <span style="font-size: 0.95rem; font-weight: 800; color: #38BDF8; font-family: var(--font-mono);">${safeDistance}</span>
       </div>
 
@@ -254,7 +267,7 @@ function createShelterPopupHtml(data) {
       </div>
 
       <div style="margin-top: 0.5rem;">
-        <button onclick="drawEvacuationRouteTo(${lat}, ${lng}, '${escapedJsName}')" class="btn btn-sm btn-primary" style="width: 100%; text-align: center; font-size: 0.8rem; padding: 0.45rem;">
+        <button data-lat="${lat}" data-lng="${lng}" data-name="${safeName}" onclick="window.handleRouteBtnClick(this)" class="btn btn-sm btn-primary" style="width: 100%; text-align: center; font-size: 0.8rem; padding: 0.45rem;">
           Show Direction to Shelter
         </button>
       </div>
@@ -471,9 +484,6 @@ function initFloodMap(containerId = "map-container", options = {}) {
   loadAllSpatialLayers();
   fetchAndRenderLiveData();
 
-  // Flood Impact Timeline: dedicated layer for timeline event markers
-  timelineFloodEventsLayer = L.layerGroup();
-
   // Initialize Real-Time Flood-Safe Road Navigation System
   if (typeof FloodNavigationSystem !== "undefined" && FloodNavigationSystem.init) {
     FloodNavigationSystem.init(map);
@@ -508,9 +518,13 @@ function initFloodMap(containerId = "map-container", options = {}) {
     });
   }
 
-  // Automatic resize handling
+  // Automatic resize handling (debounced 150ms to avoid layout thrashing)
+  let mapResizeTimer = null;
   window.addEventListener("resize", () => {
-    if (map) map.invalidateSize();
+    clearTimeout(mapResizeTimer);
+    mapResizeTimer = setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 150);
   });
 
   return map;
@@ -737,9 +751,20 @@ window.onBasinSelectChange = function(basinKey) {
 };
 
 window.onRegionChange = function(region) {
-  if (region === "odisha") onStateSelectChange("Odisha");
-  else if (region === "kerala") onStateSelectChange("Kerala");
-  else onStateSelectChange("all");
+  if (!region || region === "all" || region === "india") {
+    onStateSelectChange("all");
+    return;
+  }
+  const regLower = region.toLowerCase().trim();
+  const matchedKey = Object.keys(allStatesMeta).find(
+    s => s.toLowerCase() === regLower
+  );
+  if (matchedKey) {
+    onStateSelectChange(matchedKey);
+  } else {
+    const formatted = regLower.split(/[\s_-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    onStateSelectChange(formatted);
+  }
 };
 
 // =============================================================================
@@ -910,9 +935,17 @@ function renderShelters(geojson) {
     const latlng = [coords[1], coords[0]];
 
     const marker = L.marker(latlng, { icon: ICONS.shelter });
+    let distStr = `${p.elevation || 12}m MSL`;
+    const uLat = window._userCurrentCoords?.lat || (userLocationMarker ? userLocationMarker.getLatLng().lat : null);
+    const uLng = window._userCurrentCoords?.lng || (userLocationMarker ? userLocationMarker.getLatLng().lng : null);
+    if (uLat != null && uLng != null && typeof computeHaversineDistance === "function") {
+      const km = computeHaversineDistance(uLat, uLng, latlng[0], latlng[1]);
+      distStr = `${km.toFixed(1)} km away (${p.elevation || 12}m MSL)`;
+    }
+
     const popupHtml = createShelterPopupHtml({
       name: p.name || "Safe Shelter",
-      distance: `${p.elevation || 12}m MSL`,
+      distance: distStr,
       capacity: p.capacity || 500,
       available: Math.max(0, (p.capacity || 500) - (p.current_occupancy || 0)),
       facilities: ["Drinking Water", "Food Supply", "Medical Support", "Emergency Power"],
@@ -928,8 +961,7 @@ function renderShelters(geojson) {
     cachedSheltersData.push({
       ...p,
       latitude: latlng[0],
-      longitude: latlng[1],
-      _marker: marker
+      longitude: latlng[1]
     });
   });
 }
@@ -967,7 +999,7 @@ function renderHospitals(geojson) {
         <div style="font-size: 0.78rem; color: #EF4444; font-family: var(--font-mono); margin-bottom: 0.65rem;">
           Hotline: ${helpline}
         </div>
-        <button onclick="drawEvacuationRouteTo(${latlng[0]}, ${latlng[1]}, '${safeHospName}')" class="btn btn-sm btn-danger" style="width: 100%;">
+        <button data-lat="${latlng[0]}" data-lng="${latlng[1]}" data-name="${hospName}" onclick="window.handleRouteBtnClick(this)" class="btn btn-sm btn-danger" style="width: 100%;">
           Show Direction to Hospital (Approximate)
         </button>
       </div>
@@ -1064,11 +1096,12 @@ function renderForecastRiskLayer(geojson) {
     },
     onEachFeature: (feature, layer) => {
       const p = feature.properties || {};
-      const zoneName = p.zone_name || `${p.state || 'Regional'} Predicted Alert Zone`;
+      const riskLevel = (p.forecast_risk_level || "HIGH").toUpperCase();
+      const prob = p.probability ? (String(p.probability).includes("%") ? p.probability : `${p.probability}%`) : (riskLevel === "CRITICAL" ? "92%" : riskLevel === "HIGH" ? "78%" : riskLevel === "MEDIUM" ? "55%" : "35%");
       const popupHtml = createPredictionPopupHtml({
         area: escapeHtml(zoneName),
-        probability: "78%",
-        risk: (p.forecast_risk_level || "HIGH").toUpperCase(),
+        probability: prob,
+        risk: riskLevel,
         expected: escapeHtml(p.horizon || "Next 6–12 Hours")
       });
 
@@ -1180,13 +1213,75 @@ function renderFilteredLiveLayers() {
     riverMarker.on("click", () => showMobileSheet(st.location_name, enhancedPopupHtml));
     riverStationsLayer.addLayer(riverMarker);
     liveStationMarkers[st.location_name] = riverMarker;
+
+    // 2. Rainfall Monitoring Marker
+    if (st.rainfall_24h_mm !== undefined && st.rainfall_24h_mm !== null) {
+      const rainMarker = L.marker(latlng, {
+        icon: createLiveRainfallMarkerIcon(st.rainfall_24h_mm, st.rainfall_24h_mm >= 50)
+      });
+      const rainPopup = `
+        <div class="popup-card" style="padding: 1rem; min-width: 220px;">
+          <div style="font-size: 0.72rem; font-weight: 800; color: #38BDF8; text-transform: uppercase;">PRECIPITATION MONITOR</div>
+          <div class="popup-title" style="font-size: 1.1rem; font-weight: 800; color: #FFFFFF; margin: 0.35rem 0;">${escapeHtml(st.location_name)}</div>
+          <div style="font-size: 1.25rem; font-weight: 800; color: #60A5FA; font-family: var(--font-mono); margin-bottom: 0.35rem;">${escapeHtml(st.rainfall_24h_mm)} mm</div>
+          <div style="font-size: 0.76rem; color: #94A3B8;">24h Cumulative Precipitation • ${escapeHtml(st.state || '')}</div>
+        </div>
+      `;
+      rainMarker.bindPopup(rainPopup);
+      rainMarker.on("click", () => showMobileSheet(`${st.location_name} Rainfall`, rainPopup));
+      liveRainfallLayer.addLayer(rainMarker);
+    }
+
+    // 3. Flood Warning Alert Beacons
+    if (isDng || isWarn || isCrit || isHigh) {
+      const warnMarker = L.marker(latlng, {
+        icon: createLiveWarningMarkerIcon()
+      });
+      warnMarker.bindPopup(enhancedPopupHtml);
+      warnMarker.on("click", () => showMobileSheet(`Warning: ${st.location_name}`, enhancedPopupHtml));
+      floodWarningsLayer.addLayer(warnMarker);
+    }
+  });
+
+  // Also populate floodWarningsLayer with active alerts from cachedAlertData
+  cachedAlertData.forEach((alt) => {
+    if ((alt.status || "").toLowerCase() === "active") {
+      const locName = alt.location || alt.area_name || alt.district || "";
+      if (selectedState !== "all" && alt.state && alt.state.toLowerCase() !== selectedState.toLowerCase()) return;
+      if (selectedDistrict !== "all" && alt.district && alt.district.toLowerCase() !== selectedDistrict.toLowerCase()) return;
+      let aLat = alt.latitude || alt.lat;
+      let aLng = alt.longitude || alt.lng;
+      if (!aLat || !aLng) {
+        const matchingSt = rawStationsData.find(s => s.location_name && locName.toLowerCase().includes(s.location_name.toLowerCase()));
+        if (matchingSt) {
+          aLat = matchingSt.latitude;
+          aLng = matchingSt.longitude;
+        }
+      }
+      if (aLat && aLng) {
+        const altMarker = L.marker([aLat, aLng], {
+          icon: createLiveWarningMarkerIcon()
+        });
+        const altPopup = `
+          <div class="popup-card" style="padding: 1rem; min-width: 240px;">
+            <div style="font-size: 0.72rem; font-weight: 800; color: #EF4444; text-transform: uppercase;">ACTIVE FLOOD ALERT</div>
+            <div class="popup-title" style="font-size: 1.1rem; font-weight: 800; color: #FFFFFF; margin: 0.35rem 0;">${escapeHtml(locName)}</div>
+            <div style="font-size: 0.8rem; color: #CBD5E1; margin-bottom: 0.5rem;">${escapeHtml(alt.description || alt.message || 'Urgent flood warning in effect.')}</div>
+            <div style="font-size: 0.72rem; color: #EF4444; font-weight: 700;">SEVERITY: ${escapeHtml(alt.alert_type || alt.severity || 'CRITICAL')}</div>
+          </div>
+        `;
+        altMarker.bindPopup(altPopup);
+        altMarker.on("click", () => showMobileSheet(`Alert: ${locName}`, altPopup));
+        floodWarningsLayer.addLayer(altMarker);
+      }
+    }
   });
 }
 
 function updateLiveDashboardUI(dash, status, overview) {
   const drawerSub = document.getElementById("drawer-last-updated");
   if (drawerSub) {
-    const stationCount = dash.active_stations_count || (dash.stations || []).length || 38;
+    const stationCount = dash.active_stations_count || (dash.stations || []).length || rawStationsData.length || 0;
     drawerSub.textContent = `Synced: ${dash.last_updated_time || "Real-Time"} • ${stationCount} stations active`;
   }
 
@@ -1201,15 +1296,17 @@ function updateLiveDashboardUI(dash, status, overview) {
   if (elActiveAreas) {
     const totalAreas = (cachedFloodPolygons && cachedFloodPolygons.length > 0)
       ? cachedFloodPolygons.length
-      : (dash.active_areas_count || 12);
+      : (cachedFloodAreasDbData && cachedFloodAreasDbData.length > 0
+          ? cachedFloodAreasDbData.length
+          : (dash.active_areas_count || 0));
     elActiveAreas.textContent = `${totalAreas} Areas`;
   }
 
   if (elActiveWarnings) {
-    const alertsCount = (cachedAlertData && cachedAlertData.length > 0)
-      ? cachedAlertData.length
-      : (dash.active_warnings_count || 4);
-    elActiveWarnings.textContent = `${alertsCount} Warnings`;
+    const activeAlerts = (cachedAlertData && cachedAlertData.length > 0)
+      ? cachedAlertData.filter(a => (a.status || "").toLowerCase() === "active").length
+      : (dash.active_warnings_count || 0);
+    elActiveWarnings.textContent = `${activeAlerts} Warnings`;
   }
 
   if (elHighRisk) {
@@ -1220,8 +1317,11 @@ function updateLiveDashboardUI(dash, status, overview) {
         return sev === "HIGH";
       }).length;
     }
+    if (highCount === 0 && rawStationsData && rawStationsData.length > 0) {
+      highCount = rawStationsData.filter(s => (s.risk_level || "").toUpperCase() === "HIGH").length;
+    }
     if (highCount === 0 && dash.warning_gauges_count) highCount = dash.warning_gauges_count;
-    elHighRisk.textContent = `${highCount || 4} Areas`;
+    elHighRisk.textContent = `${highCount} Areas`;
   }
 
   if (elCriticalAreas) {
@@ -1232,17 +1332,24 @@ function updateLiveDashboardUI(dash, status, overview) {
         return sev === "CRITICAL";
       }).length;
     }
+    if (critCount === 0 && rawStationsData && rawStationsData.length > 0) {
+      critCount = rawStationsData.filter(s => (s.risk_level || "").toUpperCase() === "CRITICAL").length;
+    }
     if (critCount === 0 && dash.critical_gauges_count) critCount = dash.critical_gauges_count;
-    elCriticalAreas.textContent = `${critCount || 3} Areas`;
+    elCriticalAreas.textContent = `${critCount} Areas`;
   }
 
   if (elPeakRain) {
-    const peakRain = dash.peak_rainfall_24h_mm || overview?.summary?.national_peak_rainfall_24h_mm || 142.5;
-    elPeakRain.textContent = `${peakRain} mm`;
+    let peakRain = dash.peak_rainfall_24h_mm || overview?.summary?.national_peak_rainfall_24h_mm;
+    if (!peakRain && rawStationsData && rawStationsData.length > 0) {
+      peakRain = Math.max(0, ...rawStationsData.map(s => Number(s.rainfall_24h_mm) || 0));
+    }
+    elPeakRain.textContent = `${peakRain || 0} mm`;
   }
 
   if (elMonitoredStates) {
-    elMonitoredStates.textContent = "28+ States";
+    const statesCount = Object.keys(allStatesMeta).length || (rawStationsData.length > 0 ? new Set(rawStationsData.map(s => s.state)).size : 0);
+    elMonitoredStates.textContent = statesCount > 0 ? `${statesCount} States` : "Nationwide";
   }
 
   // Subsystems Operational Status Badges
@@ -1351,6 +1458,9 @@ window.onAutoRefreshChange = function(val) {
 window.forceSyncLiveData = async function() {
   secondsRemaining = autoRefreshInterval > 0 ? autoRefreshInterval : 300;
   updateTimerDisplay();
+  if (typeof FloodDataService !== "undefined" && FloodDataService.clearCache) {
+    FloodDataService.clearCache();
+  }
   if (typeof showToast === "function") {
     showToast("⚡ Synchronizing live rainfall, river telemetry, and spatial warnings...", "info");
   }
@@ -1400,7 +1510,7 @@ function setupLayerToggles() {
     }
   });
 
-  // Satellite Remote Sensing Overlay
+  // Satellite Remote Sensing Overlay (ISRO Bhuvan Archive)
   const chkBhuvan = document.getElementById("toggle-bhuvan-overlay");
   if (chkBhuvan) {
     bhuvanDisasterLayer = L.tileLayer.wms("https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wms", {
@@ -1410,14 +1520,14 @@ function setupLayerToggles() {
       version: "1.1.1",
       srs: "EPSG:900913",
       maxZoom: 18,
-      attribution: "Remote Sensing &copy; ISRO Bhuvan Disaster Services"
+      attribution: "Remote Sensing &copy; ISRO Bhuvan (Kerala Aug 2020 Flood Event Archive)"
     });
 
     chkBhuvan.addEventListener("change", (e) => {
       if (e.target.checked) {
         map.addLayer(bhuvanDisasterLayer);
         bhuvanDisasterLayer.bringToFront?.();
-        if (typeof showToast === "function") showToast("🛰️ ISRO Bhuvan Disaster Overlay Activated", "info");
+        if (typeof showToast === "function") showToast("🛰️ ISRO Bhuvan Inundation Archive Layer Activated (Kerala 2020 Event)", "info");
       } else {
         if (map.hasLayer(bhuvanDisasterLayer)) map.removeLayer(bhuvanDisasterLayer);
       }
@@ -1432,7 +1542,24 @@ window.applyModeToMap = function(mode) {
   if (statusLabel) {
     statusLabel.textContent = isCitizen ? "LIVE CITIZEN SAFETY RADAR" : "ADMIN / GIS WORKBENCH ACTIVE";
   }
+
+  // Admin vs Citizen HUD / Layer Visibility
+  const advLayersPanel = document.getElementById("panel-advanced-layers");
+  if (!isCitizen && advLayersPanel) {
+    advLayersPanel.classList.add("open");
+  }
+  if (!isCitizen && map) {
+    if (riverStationsLayer && !map.hasLayer(riverStationsLayer)) map.addLayer(riverStationsLayer);
+    if (liveRainfallLayer && !map.hasLayer(liveRainfallLayer)) map.addLayer(liveRainfallLayer);
+    if (floodWarningsLayer && !map.hasLayer(floodWarningsLayer)) map.addLayer(floodWarningsLayer);
+  }
 };
+
+window.addEventListener("modechange", (e) => {
+  if (e.detail && e.detail.mode) {
+    window.applyModeToMap(e.detail.mode);
+  }
+});
 
 window.setMapMode = function(mode) {
   currentMapMode = mode;
@@ -1539,7 +1666,9 @@ function setupMapSearch() {
   const suggestionsBox = document.getElementById("search-suggestions");
   if (!searchInput) return;
 
-  function buildSearchIndex() {
+  let cachedSearchIndex = null;
+  function buildSearchIndex(forceRebuild = false) {
+    if (cachedSearchIndex && !forceRebuild) return cachedSearchIndex;
     const items = [];
 
     // 1. States & Districts
@@ -1651,7 +1780,16 @@ function setupMapSearch() {
           zoom: 13,
           action: () => {
             map.flyTo([lat, lng], 13, { duration: 1.1 });
-            if (sh._marker) setTimeout(() => sh._marker.openPopup(), 1200);
+            if (sheltersLayer) {
+              sheltersLayer.eachLayer(l => {
+                if (typeof l.getLatLng === "function") {
+                  const ll = l.getLatLng();
+                  if (Math.abs(ll.lat - lat) < 0.0001 && Math.abs(ll.lng - lng) < 0.0001) {
+                    setTimeout(() => l.openPopup(), 1200);
+                  }
+                }
+              });
+            }
           }
         });
       }
@@ -1678,54 +1816,59 @@ function setupMapSearch() {
       }
     });
 
+    cachedSearchIndex = items;
     return items;
   }
 
-  // Live Suggestion Trigger on Typing
+  // Live Suggestion Trigger on Typing (Debounced 200ms)
+  let searchDebounceTimer = null;
   searchInput.addEventListener("input", () => {
-    const q = searchInput.value.toLowerCase().trim();
-    if (!suggestionsBox) return;
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      const q = searchInput.value.toLowerCase().trim();
+      if (!suggestionsBox) return;
 
-    if (!q || q.length < 2) {
-      suggestionsBox.innerHTML = "";
-      suggestionsBox.classList.remove("active");
-      return;
-    }
-
-    const index = buildSearchIndex();
-    const matches = index.filter(item =>
-      item.title.toLowerCase().includes(q) || item.subtitle.toLowerCase().includes(q)
-    ).slice(0, 8);
-
-    if (matches.length === 0) {
-      suggestionsBox.innerHTML = `
-        <div style="padding: 0.75rem; text-align: center; color: #94A3B8; font-size: 0.8rem;">
-          No matching location found. Search by state, district, river basin, station, or shelter.
-        </div>
-      `;
-      suggestionsBox.classList.add("active");
-      return;
-    }
-
-    suggestionsBox.innerHTML = "";
-    matches.forEach((m) => {
-      const row = document.createElement("div");
-      row.className = "search-suggestion-item";
-      row.innerHTML = `
-        <div>
-          <div style="font-weight: 700; color: #FFFFFF;">${escapeHtml(m.title)}</div>
-          <div style="font-size: 0.72rem; color: #94A3B8;">${escapeHtml(m.subtitle)}</div>
-        </div>
-        <span class="search-suggestion-badge ${escapeHtml(m.badgeCls)}">${escapeHtml(m.badge)}</span>
-      `;
-      row.onclick = () => {
-        searchInput.value = m.title;
+      if (!q || q.length < 2) {
+        suggestionsBox.innerHTML = "";
         suggestionsBox.classList.remove("active");
-        m.action();
-      };
-      suggestionsBox.appendChild(row);
-    });
-    suggestionsBox.classList.add("active");
+        return;
+      }
+
+      const index = buildSearchIndex();
+      const matches = index.filter(item =>
+        item.title.toLowerCase().includes(q) || item.subtitle.toLowerCase().includes(q)
+      ).slice(0, 8);
+
+      if (matches.length === 0) {
+        suggestionsBox.innerHTML = `
+          <div style="padding: 0.75rem; text-align: center; color: #94A3B8; font-size: 0.8rem;">
+            No matching location found. Search by state, district, river basin, station, or shelter.
+          </div>
+        `;
+        suggestionsBox.classList.add("active");
+        return;
+      }
+
+      suggestionsBox.innerHTML = "";
+      matches.forEach((m) => {
+        const row = document.createElement("div");
+        row.className = "search-suggestion-item";
+        row.innerHTML = `
+          <div>
+            <div style="font-weight: 700; color: #FFFFFF;">${escapeHtml(m.title)}</div>
+            <div style="font-size: 0.72rem; color: #94A3B8;">${escapeHtml(m.subtitle)}</div>
+          </div>
+          <span class="search-suggestion-badge ${escapeHtml(m.badgeCls)}">${escapeHtml(m.badge)}</span>
+        `;
+        row.onclick = () => {
+          searchInput.value = m.title;
+          suggestionsBox.classList.remove("active");
+          m.action();
+        };
+        suggestionsBox.appendChild(row);
+      });
+      suggestionsBox.classList.add("active");
+    }, 200);
   });
 
   // Close dropdown on outside click
@@ -1921,8 +2064,14 @@ window.drawEvacuationRouteTo = function(destLat, destLng, destName, originLatLng
 // MOBILE RESPONSIVENESS & BOTTOM SHEET (Requirement #17)
 // =============================================================================
 
+function closeMobileSheet() {
+  const sheet = document.getElementById("mobile-sheet");
+  if (sheet) sheet.classList.remove("open");
+}
+window.closeMobileSheet = closeMobileSheet;
+
 window.showMobileSheet = function(title, htmlContent) {
-  if (window.innerWidth >= 768) return;
+  if (window.innerWidth > 900) return;
   const sheet = document.getElementById("mobile-sheet");
   const sheetTitle = document.getElementById("mobile-sheet-title");
   const sheetBody = document.getElementById("mobile-sheet-body");
@@ -1931,11 +2080,6 @@ window.showMobileSheet = function(title, htmlContent) {
   if (sheetTitle) sheetTitle.textContent = title || "Location Details";
   sheetBody.innerHTML = htmlContent;
   sheet.classList.add("open");
-};
-
-window.closeMobileSheet = function() {
-  const sheet = document.getElementById("mobile-sheet");
-  if (sheet) sheet.classList.remove("open");
 };
 
 // =============================================================================
@@ -1981,12 +2125,17 @@ function handleUrlDeepLinking() {
 const FloodDataService = {
   // Current active GeoJSON feature collection being rendered
   currentGeoJson: null,
+  _geoJsonCache: new Map(),
+
+  clearCache() {
+    this._geoJsonCache.clear();
+  },
 
   /**
    * Loads GeoJSON flood polygons from backend or fallback spatial data.
    * Connects each flood area with its corresponding flood event.
    */
-  async loadFloodGeoJSON(period = selectedTimePeriod, filters = {}) {
+  async loadFloodGeoJSON(period = selectedTimePeriod, filters = {}, bypassCache = false) {
     const p = period || selectedTimePeriod || "today";
     const st = filters.state !== undefined ? filters.state : selectedState;
     const dist = filters.district !== undefined ? filters.district : selectedDistrict;
@@ -1999,10 +2148,18 @@ const FloodDataService = {
       basin: b || "all"
     };
 
+    const cacheKey = JSON.stringify(params);
+    if (!bypassCache && this._geoJsonCache.has(cacheKey)) {
+      const cached = this._geoJsonCache.get(cacheKey);
+      this.currentGeoJson = cached;
+      return cached;
+    }
+
     try {
       const res = await API.getFloodEffectAreas(params);
       if (res && res.features) {
         this.currentGeoJson = res;
+        this._geoJsonCache.set(cacheKey, res);
         return res;
       }
     } catch (err) {

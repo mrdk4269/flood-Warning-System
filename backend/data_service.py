@@ -112,11 +112,24 @@ class LiveDataService:
         except Exception:
             live_telemetry_map = {}
 
+        # Coordinate weather cache to avoid duplicate calls while supporting station-specific coordinates (BUG-025)
+        station_weather_cache = {}
+        def _get_weather_for(st_lat, st_lon):
+            if st_lat is None or st_lon is None:
+                return weather_data
+            ckey = (round(float(st_lat), 1), round(float(st_lon), 1))
+            if ckey not in station_weather_cache:
+                try:
+                    station_weather_cache[ckey] = LiveDataService.fetch_realtime_weather(lat=float(st_lat), lon=float(st_lon))
+                except Exception:
+                    station_weather_cache[ckey] = weather_data
+            return station_weather_cache[ckey]
+
         conn = get_connection()
         cursor = conn.cursor()
 
         # 1. Update Rainfall Stations with Live Spatial Values
-        cursor.execute("SELECT id, location FROM rainfall_data")
+        cursor.execute("SELECT id, location, latitude, longitude FROM rainfall_data")
         stations = cursor.fetchall()
         for st in stations:
             loc_name = st["location"] or ""
@@ -128,6 +141,10 @@ class LiveDataService:
 
             if matched_live and matched_live.get("rainfall") is not None:
                 st_rain = round(float(matched_live["rainfall"]), 1)
+            elif st["latitude"] is not None and st["longitude"] is not None:
+                local_w = _get_weather_for(st["latitude"], st["longitude"])
+                local_rain = max(local_w.get("daily_rain_sum", 0.0) or 0.0, local_w.get("precipitation", 0.0) or 0.0)
+                st_rain = round(local_rain if local_rain > 0 else station_rain_baseline, 1)
             else:
                 st_rain = round(max(5.0, station_rain_baseline), 1)
 
@@ -237,86 +254,107 @@ class LiveDataService:
 
         generated_alerts = []
 
-        # 1. Check Rivers
-        cursor.execute("SELECT * FROM river_data")
-        rivers = cursor.fetchall()
-        for r in rivers:
-            r_name = r["river_name"]
-            w_level = r["water_level"]
-            warn_lvl = r["warning_level"]
-            dang_lvl = r["danger_level"]
+        try:
+            # 1. Check Rivers
+            cursor.execute("SELECT * FROM river_data")
+            rivers = cursor.fetchall()
+            for r in rivers:
+                r_name = r["river_name"]
+                w_level = r["water_level"]
+                warn_lvl = r["warning_level"]
+                dang_lvl = r["danger_level"]
 
-            if w_level >= dang_lvl:
-                cursor.execute("""
-                    SELECT id FROM alerts 
-                    WHERE location LIKE ? AND risk_level = 'CRITICAL' AND status = 'ACTIVE'
-                """, (f"%{r_name}%",))
-                if not cursor.fetchone():
+                cursor.execute("SELECT id, risk_level FROM alerts WHERE location = ? AND status = 'ACTIVE'", (r_name,))
+                existing = cursor.fetchone()
+
+                if w_level >= dang_lvl:
                     title = f"CRITICAL RIVER SURGE: {r_name}"
                     desc = f"Water level at {w_level}m has exceeded the Danger Mark ({dang_lvl}m). Immediate flood overflow threatening downstream communities."
-                    cursor.execute("""
-                        INSERT INTO alerts (title, description, location, risk_level, alert_type, date, time, status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (title, desc, r_name, "CRITICAL", "Critical Flood Alert", date_str, time_str, "ACTIVE"))
-                    generated_alerts.append({"title": title, "level": "CRITICAL"})
+                    if not existing:
+                        cursor.execute("""
+                            INSERT INTO alerts (title, description, location, risk_level, alert_type, date, time, status)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (title, desc, r_name, "CRITICAL", "Critical Flood Alert", date_str, time_str, "ACTIVE"))
+                        generated_alerts.append({"title": title, "level": "CRITICAL"})
+                    elif existing["risk_level"] != "CRITICAL":
+                        cursor.execute("""
+                            UPDATE alerts SET title = ?, description = ?, risk_level = 'CRITICAL', alert_type = 'Critical Flood Alert', date = ?, time = ?
+                            WHERE id = ?
+                        """, (title, desc, date_str, time_str, existing["id"]))
+                        generated_alerts.append({"title": title, "level": "CRITICAL"})
 
-            elif w_level >= warn_lvl:
-                cursor.execute("""
-                    SELECT id FROM alerts 
-                    WHERE location LIKE ? AND risk_level IN ('MEDIUM', 'HIGH') AND status = 'ACTIVE'
-                """, (f"%{r_name}%",))
-                if not cursor.fetchone():
+                elif w_level >= warn_lvl:
                     title = f"RIVER WARNING STAGE: {r_name}"
                     desc = f"Water level reached {w_level}m, breaching Warning Threshold ({warn_lvl}m). Sluice gates under high pressure."
-                    cursor.execute("""
-                        INSERT INTO alerts (title, description, location, risk_level, alert_type, date, time, status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (title, desc, r_name, "HIGH", "Rising River Alert", date_str, time_str, "ACTIVE"))
-                    generated_alerts.append({"title": title, "level": "HIGH"})
+                    if not existing:
+                        cursor.execute("""
+                            INSERT INTO alerts (title, description, location, risk_level, alert_type, date, time, status)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (title, desc, r_name, "HIGH", "Rising River Alert", date_str, time_str, "ACTIVE"))
+                        generated_alerts.append({"title": title, "level": "HIGH"})
+                    elif existing["risk_level"] not in ("HIGH", "CRITICAL"):
+                        cursor.execute("""
+                            UPDATE alerts SET title = ?, description = ?, risk_level = 'HIGH', alert_type = 'Rising River Alert', date = ?, time = ?
+                            WHERE id = ?
+                        """, (title, desc, date_str, time_str, existing["id"]))
+                        generated_alerts.append({"title": title, "level": "HIGH"})
+                else:
+                    # Water level has receded below warning mark: auto-resolve existing active alert
+                    if existing:
+                        cursor.execute("UPDATE alerts SET status = 'RESOLVED' WHERE id = ?", (existing["id"],))
 
-        # 2. Check Flood Areas & Recalculate Risk
-        cursor.execute("SELECT * FROM flood_areas")
-        areas = cursor.fetchall()
-        for a in areas:
-            rain = a["rainfall"]
-            w_level = a["water_level"]
-            elev = a["elevation"]
-            dist = a["distance_to_river"]
-            name = a["area_name"]
+            # 2. Check Flood Areas & Recalculate Risk
+            cursor.execute("SELECT * FROM flood_areas")
+            areas = cursor.fetchall()
+            for a in areas:
+                rain = a["rainfall"]
+                w_level = a["water_level"]
+                elev = a["elevation"]
+                dist = a["distance_to_river"]
+                name = a["area_name"]
 
-            risk_eval = calculate_flood_risk(
-                rainfall=rain,
-                river_level=w_level,
-                elevation=elev,
-                distance_from_river=dist
-            )
-            new_level = risk_eval["risk_level"]
+                risk_eval = calculate_flood_risk(
+                    rainfall=rain,
+                    river_level=w_level,
+                    elevation=elev,
+                    distance_from_river=dist
+                )
+                new_level = risk_eval["risk_level"]
 
-            cursor.execute("""
-                UPDATE flood_areas 
-                SET risk_level = ?, last_updated = CURRENT_TIMESTAMP
-                WHERE id = ?
-            """, (new_level, a["id"]))
-
-            # Auto alert generation for High and Critical
-            if new_level in ["HIGH", "CRITICAL"]:
                 cursor.execute("""
-                    SELECT id FROM alerts 
-                    WHERE location = ? AND risk_level = ? AND status = 'ACTIVE'
-                """, (name, new_level))
-                if not cursor.fetchone():
+                    UPDATE flood_areas 
+                    SET risk_level = ?, last_updated = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (new_level, a["id"]))
+
+                cursor.execute("SELECT id, risk_level FROM alerts WHERE location = ? AND status = 'ACTIVE'", (name,))
+                existing_area_alert = cursor.fetchone()
+
+                # Auto alert generation for High and Critical
+                if new_level in ["HIGH", "CRITICAL"]:
                     alert_type = "Critical Flood Alert" if new_level == "CRITICAL" else "Flood Risk Alert"
                     title = f"{new_level} FLOOD RISK: {name}"
                     desc = f"Calculated risk index is {risk_eval['risk_score']}/100. Rainfall: {rain}mm, River Stage: {w_level}m. {risk_eval['action_advisory']}"
-                    cursor.execute("""
-                        INSERT INTO alerts (title, description, location, risk_level, alert_type, date, time, status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (title, desc, name, new_level, alert_type, date_str, time_str, "ACTIVE"))
-                    generated_alerts.append({"title": title, "level": new_level})
+                    if not existing_area_alert:
+                        cursor.execute("""
+                            INSERT INTO alerts (title, description, location, risk_level, alert_type, date, time, status)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (title, desc, name, new_level, alert_type, date_str, time_str, "ACTIVE"))
+                        generated_alerts.append({"title": title, "level": new_level})
+                    elif existing_area_alert["risk_level"] != new_level:
+                        cursor.execute("""
+                            UPDATE alerts SET title = ?, description = ?, risk_level = ?, alert_type = ?, date = ?, time = ?
+                            WHERE id = ?
+                        """, (title, desc, new_level, alert_type, date_str, time_str, existing_area_alert["id"]))
+                        generated_alerts.append({"title": title, "level": new_level})
+                else:
+                    if existing_area_alert:
+                        cursor.execute("UPDATE alerts SET status = 'RESOLVED' WHERE id = ?", (existing_area_alert["id"],))
 
-        conn.commit()
-        conn.close()
-        return generated_alerts
+            conn.commit()
+            return generated_alerts
+        finally:
+            conn.close()
 
     @staticmethod
     def simulate_telemetry_step() -> Dict[str, Any]:

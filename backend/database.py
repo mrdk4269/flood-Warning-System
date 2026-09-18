@@ -41,8 +41,14 @@ def verify_password(password: str, stored_hash: str) -> bool:
             return False
     return hmac.compare_digest(hashlib.sha256(password.encode("utf-8")).hexdigest(), stored_hash)
 
+_db_initialized = False
+
 def init_database():
     """Create all tables and seed initial data if empty."""
+    global _db_initialized
+    if _db_initialized:
+        return
+
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -185,7 +191,10 @@ def init_database():
     # Seed a development administrator if no users exist
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
-        admin_password = os.environ.get("FLOODGUARD_ADMIN_PASSWORD") or "admin123"
+        admin_password = os.environ.get("FLOODGUARD_ADMIN_PASSWORD")
+        if not admin_password:
+            admin_password = "admin123"
+            print("SECURITY WARNING: [BUG-027] Default admin password 'admin123' is in use. Set FLOODGUARD_ADMIN_PASSWORD in production environment.")
         cursor.execute("""
             INSERT INTO users (name, email, password_hash, role)
             VALUES (?, ?, ?, ?)
@@ -399,6 +408,7 @@ def init_database():
         """, history_records)
         conn.commit()
 
+    _db_initialized = True
     conn.close()
 
 if __name__ == "__main__":

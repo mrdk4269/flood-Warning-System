@@ -19,9 +19,9 @@ async function initRiskPage() {
   setupSimulatorEvents();
   setupPresetButtons();
 
-  // Check URL params
+  // Check URL params (?area= or ?target=)
   const urlParams = new URLSearchParams(window.location.search);
-  const areaParam = urlParams.get("area");
+  const areaParam = urlParams.get("area") || urlParams.get("target");
   if (areaParam) {
     const sel = document.getElementById("risk-area-select");
     if (sel) {
@@ -29,8 +29,21 @@ async function initRiskPage() {
       loadSelectedAreaData(areaParam);
     }
   } else {
+    // BUG-008: Ensure slider labels match the initial slider values
+    syncSliderLabels();
     recalculateRisk();
   }
+}
+
+function syncSliderLabels() {
+  const rainEl = document.getElementById("slider-rain");
+  if (rainEl) document.getElementById("val-rain").textContent = `${rainEl.value} mm`;
+  const riverEl = document.getElementById("slider-river");
+  if (riverEl) document.getElementById("val-river").textContent = `${riverEl.value} m`;
+  const elevEl = document.getElementById("slider-elev");
+  if (elevEl) document.getElementById("val-elev").textContent = `${elevEl.value} m`;
+  const distEl = document.getElementById("slider-dist");
+  if (distEl) document.getElementById("val-dist").textContent = `${distEl.value} m`;
 }
 
 async function loadAreaSelector() {
@@ -125,10 +138,10 @@ function setupPresetButtons() {
 }
 
 async function recalculateRisk() {
-  const rain = parseFloat(document.getElementById("slider-rain")?.value || 65);
-  const river = parseFloat(document.getElementById("slider-river")?.value || 6.8);
-  const elev = parseFloat(document.getElementById("slider-elev")?.value || 8);
-  const dist = parseFloat(document.getElementById("slider-dist")?.value || 250);
+  const rain = parseFloat(document.getElementById("slider-rain")?.value || 85);
+  const river = parseFloat(document.getElementById("slider-river")?.value || 7.2);
+  const elev = parseFloat(document.getElementById("slider-elev")?.value || 6);
+  const dist = parseFloat(document.getElementById("slider-dist")?.value || 180);
   const hist = document.getElementById("select-hist")?.value || "Moderate";
 
   try {

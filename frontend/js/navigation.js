@@ -9,6 +9,17 @@
  * 5. GPS tracking & click-on-map coordinate selection.
  */
 
+function escapeHtml(str) {
+  if (typeof window.escapeHtml === "function") return window.escapeHtml(str);
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const FloodNavigationSystem = {
   map: null,
   isActive: false,
@@ -559,3 +570,12 @@ const FloodNavigationSystem = {
 };
 
 window.FloodNavigationSystem = FloodNavigationSystem;
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
+    FloodNavigationSystem.stopLiveMonitoring();
+  });
+  window.addEventListener("pagehide", () => {
+    FloodNavigationSystem.stopLiveMonitoring();
+  });
+}

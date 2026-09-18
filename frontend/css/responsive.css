@@ -231,6 +231,35 @@
   .helpline-grid {
     grid-template-columns: 1fr;
   }
+
+  /* Keep toasts above bottom nav bar (BUG-045) */
+  #toast-container {
+    bottom: 5.5rem !important;
+    right: 1rem !important;
+    left: 1rem !important;
+    align-items: center !important;
+  }
+}
+
+/* Backdrop Overlay for Mobile Navigation Drawer (BUG-044) */
+.mobile-nav-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9980;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.mobile-nav-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 @media (min-width: 769px) {

@@ -43,7 +43,7 @@
       </a>
 
       <button class="mobile-toggle" aria-label="Toggle navigation">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
 
       <ul class="nav-links">
@@ -53,7 +53,7 @@
         <li>
           <a href="/alerts" class="nav-link">
             Alerts
-            <span id="nav-alert-counter" class="nav-alert-badge">3</span>
+            <span id="nav-alert-counter" class="nav-alert-badge" style="display: none;">0</span>
           </a>
         </li>
         <li><a href="/safe-locations" class="nav-link active">Safe Places</a></li>
@@ -62,19 +62,19 @@
         <li class="nav-dropdown">
           <button type="button" class="nav-link nav-dropdown-toggle" aria-expanded="false" aria-haspopup="true">
             <span>More</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           <div class="nav-dropdown-menu">
             <a href="/prediction" class="nav-dropdown-item">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m12 6 4 6h-8l4-6z"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m12 6 4 6h-8l4-6z"/></svg>
               <span>Flood Prediction</span>
             </a>
             <a href="/history" class="nav-dropdown-item">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
               <span>Historical Floods</span>
             </a>
             <a href="/admin" class="nav-dropdown-item admin-link">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 9h3"/><path d="M15 15h3"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 9h3"/><path d="M15 15h3"/></svg>
               <span>Admin / GIS Portal</span>
             </a>
           </div>
@@ -446,14 +446,14 @@
         const dist = calcDistanceKm(userCoords[0], userCoords[1], l.lat, l.lng);
         const safeName = (l.name || "Refuge").replace(/'/g, "\\'");
         return `
-          <tr>
+          <tr style="cursor: pointer; transition: background 0.15s ease;" onclick="focusLocationOnMap(${l.lat}, ${l.lng}, '${safeName}')" title="Click to view and center on map">
             <td><strong>${escapeHtml(l.name)}</strong></td>
             <td><span class="badge ${l.is_hospital ? 'badge-medium' : 'badge-low'}">${escapeHtml(l.type)}</span></td>
             <td class="mono">${escapeHtml(l.capacity)}</td>
             <td><span class="mono" style="color: #10B981; font-weight: 700;">● ${escapeHtml(l.status)}</span></td>
             <td class="mono">${escapeHtml(l.contact || "N/A")}</td>
             <td>
-              <button class="btn btn-sm btn-primary" onclick="setRouteDestination(${l.lat}, ${l.lng}, '${safeName}')">
+              <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); focusLocationOnMap(${l.lat}, ${l.lng}, '${safeName}')">
                 View Direction (${dist} km)
               </button>
             </td>
@@ -464,6 +464,16 @@
 
     function renderTable(filterType) {
       return renderLocationsTable(filterType);
+    }
+
+    function focusLocationOnMap(lat, lng, name) {
+      setRouteDestination(lat, lng, name);
+      if (routeMap) {
+        routeMap.flyTo([lat, lng], 14, { duration: 1.2 });
+        if (destMarker) setTimeout(() => destMarker.openPopup(), 1200);
+      }
+      const mapEl = document.getElementById("route-map");
+      if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
     function updateNearestSpotlight() {
@@ -484,8 +494,7 @@
         document.getElementById("nearest-cap").textContent = nearest.capacity;
 
         document.getElementById("btn-route-to-nearest").onclick = () => {
-          setRouteDestination(nearest.lat, nearest.lng, nearest.name);
-          document.getElementById("route-map").scrollIntoView({ behavior: "smooth" });
+          focusLocationOnMap(nearest.lat, nearest.lng, nearest.name);
         };
       }
     }

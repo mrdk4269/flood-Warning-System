@@ -46,8 +46,9 @@ def _get_or_create_secret_key():
         with open(secret_file, "w", encoding="utf-8") as f:
             f.write(new_key)
         return new_key
-    except Exception:
-        return "floodguard-dev-static-session-secret-2026"
+    except Exception as exc:
+        print(f"SECURITY WARNING: [BUG-028] Could not persist session secret key ({exc}). Using secure ephemeral in-memory secret key.")
+        return os.urandom(32).hex()
 
 app = Flask(__name__, static_folder=FRONTEND_DIR)
 app.config.update(
@@ -268,93 +269,91 @@ def get_dashboard_stats():
 def handle_flood_areas():
     conn = get_connection()
     cursor = conn.cursor()
+    try:
+        if request.method == "GET":
+            cursor.execute("SELECT * FROM flood_areas ORDER BY id ASC")
+            rows = [dict(r) for r in cursor.fetchall()]
+            return jsonify(rows)
 
-    if request.method == "GET":
-        cursor.execute("SELECT * FROM flood_areas ORDER BY id ASC")
-        rows = [dict(r) for r in cursor.fetchall()]
+        elif request.method == "POST":
+            data = request.json or {}
+            required = ["area_name", "latitude", "longitude", "risk_level"]
+            for field in required:
+                if field not in data:
+                    return jsonify({"error": f"Missing field: {field}"}), 400
+
+            cursor.execute("""
+                INSERT INTO flood_areas (area_name, district, latitude, longitude, geometry_json, risk_level, rainfall, water_level, elevation, distance_to_river, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                data.get("area_name"),
+                data.get("district", "Central Basin District"),
+                float(data.get("latitude")),
+                float(data.get("longitude")),
+                json.dumps(data.get("geometry_json", {})),
+                data.get("risk_level", "Medium"),
+                float(data.get("rainfall", 0.0)),
+                float(data.get("water_level", 0.0)),
+                float(data.get("elevation", 10.0)),
+                int(data.get("distance_to_river", 200)),
+                data.get("description", "")
+            ))
+            conn.commit()
+            new_id = cursor.lastrowid
+            return jsonify({"message": "Flood area created successfully", "id": new_id}), 201
+    finally:
         conn.close()
-        return jsonify(rows)
-
-    elif request.method == "POST":
-        data = request.json or {}
-        required = ["area_name", "latitude", "longitude", "risk_level"]
-        for field in required:
-            if field not in data:
-                conn.close()
-                return jsonify({"error": f"Missing field: {field}"}), 400
-
-        cursor.execute("""
-            INSERT INTO flood_areas (area_name, district, latitude, longitude, geometry_json, risk_level, rainfall, water_level, elevation, distance_to_river, description)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data.get("area_name"),
-            data.get("district", "Central Basin District"),
-            float(data.get("latitude")),
-            float(data.get("longitude")),
-            json.dumps(data.get("geometry_json", {})),
-            data.get("risk_level", "Medium"),
-            float(data.get("rainfall", 0.0)),
-            float(data.get("water_level", 0.0)),
-            float(data.get("elevation", 10.0)),
-            int(data.get("distance_to_river", 200)),
-            data.get("description", "")
-        ))
-        conn.commit()
-        new_id = cursor.lastrowid
-        conn.close()
-        return jsonify({"message": "Flood area created successfully", "id": new_id}), 201
 
 @app.route("/api/flood-areas/<int:area_id>", methods=["GET", "PUT", "DELETE"])
 def handle_flood_area_by_id(area_id):
     conn = get_connection()
     cursor = conn.cursor()
+    try:
+        if request.method == "GET":
+            cursor.execute("SELECT * FROM flood_areas WHERE id = ?", (area_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({"error": "Area not found"}), 404
+            return jsonify(dict(row))
 
-    if request.method == "GET":
-        cursor.execute("SELECT * FROM flood_areas WHERE id = ?", (area_id,))
-        row = cursor.fetchone()
-        conn.close()
-        if not row:
-            return jsonify({"error": "Area not found"}), 404
-        return jsonify(dict(row))
+        elif request.method == "PUT":
+            data = request.json or {}
+            updatable = {
+                "area_name": lambda v: str(v) if v is not None else None,
+                "district": lambda v: str(v) if v is not None else None,
+                "latitude": lambda v: float(v) if v is not None else None,
+                "longitude": lambda v: float(v) if v is not None else None,
+                "risk_level": lambda v: str(v) if v is not None else None,
+                "rainfall": lambda v: float(v) if v is not None else None,
+                "water_level": lambda v: float(v) if v is not None else None,
+                "elevation": lambda v: float(v) if v is not None else None,
+                "distance_to_river": lambda v: int(v) if v is not None else None,
+                "description": lambda v: str(v) if v is not None else None,
+            }
+            set_clauses = []
+            params = []
+            for col, cast_fn in updatable.items():
+                if col in data:
+                    try:
+                        val = cast_fn(data[col])
+                    except (ValueError, TypeError):
+                        val = None
+                    set_clauses.append(f"{col} = ?")
+                    params.append(val)
 
-    elif request.method == "PUT":
-        data = request.json or {}
-        cursor.execute("""
-            UPDATE flood_areas SET
-                area_name = COALESCE(?, area_name),
-                district = COALESCE(?, district),
-                latitude = COALESCE(?, latitude),
-                longitude = COALESCE(?, longitude),
-                risk_level = COALESCE(?, risk_level),
-                rainfall = COALESCE(?, rainfall),
-                water_level = COALESCE(?, water_level),
-                elevation = COALESCE(?, elevation),
-                distance_to_river = COALESCE(?, distance_to_river),
-                description = COALESCE(?, description),
-                last_updated = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (
-            data.get("area_name"),
-            data.get("district"),
-            data.get("latitude"),
-            data.get("longitude"),
-            data.get("risk_level"),
-            data.get("rainfall"),
-            data.get("water_level"),
-            data.get("elevation"),
-            data.get("distance_to_river"),
-            data.get("description"),
-            area_id
-        ))
-        conn.commit()
-        conn.close()
-        return jsonify({"message": "Area updated successfully"})
+            if set_clauses:
+                set_clauses.append("last_updated = CURRENT_TIMESTAMP")
+                params.append(area_id)
+                cursor.execute(f"UPDATE flood_areas SET {', '.join(set_clauses)} WHERE id = ?", params)
+                conn.commit()
+            return jsonify({"message": "Area updated successfully"})
 
-    elif request.method == "DELETE":
-        cursor.execute("DELETE FROM flood_areas WHERE id = ?", (area_id,))
-        conn.commit()
+        elif request.method == "DELETE":
+            cursor.execute("DELETE FROM flood_areas WHERE id = ?", (area_id,))
+            conn.commit()
+            return jsonify({"message": "Area deleted successfully"})
+    finally:
         conn.close()
-        return jsonify({"message": "Area deleted successfully"})
 
 # =============================================================================
 # REST API: ALERTS (CRUD)
@@ -364,74 +363,75 @@ def handle_flood_area_by_id(area_id):
 def handle_alerts():
     conn = get_connection()
     cursor = conn.cursor()
+    try:
+        if request.method == "GET":
+            status_filter = request.args.get("status")
+            level_filter = request.args.get("risk_level")
 
-    if request.method == "GET":
-        status_filter = request.args.get("status")
-        level_filter = request.args.get("risk_level")
+            query = "SELECT * FROM alerts WHERE 1=1"
+            params = []
+            if status_filter:
+                query += " AND UPPER(status) = UPPER(?)"
+                params.append(status_filter)
+            if level_filter:
+                query += " AND UPPER(risk_level) = UPPER(?)"
+                params.append(level_filter)
 
-        query = "SELECT * FROM alerts WHERE 1=1"
-        params = []
-        if status_filter:
-            query += " AND UPPER(status) = UPPER(?)"
-            params.append(status_filter)
-        if level_filter:
-            query += " AND UPPER(risk_level) = UPPER(?)"
-            params.append(level_filter)
+            query += " ORDER BY id DESC"
+            cursor.execute(query, params)
+            rows = [dict(r) for r in cursor.fetchall()]
+            return jsonify(rows)
 
-        query += " ORDER BY id DESC"
-        cursor.execute(query, params)
-        rows = [dict(r) for r in cursor.fetchall()]
+        elif request.method == "POST":
+            data = request.json or {}
+            now = datetime.now()
+            date_str = data.get("date", now.strftime("%Y-%m-%d"))
+            time_str = data.get("time", now.strftime("%H:%M:%S"))
+
+            cursor.execute("""
+                INSERT INTO alerts (title, description, location, risk_level, alert_type, date, time, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                data.get("title", "Flood Advisory"),
+                data.get("description", ""),
+                data.get("location", "District Wide"),
+                data.get("risk_level", "HIGH"),
+                data.get("alert_type", "Flood Risk Alert"),
+                date_str,
+                time_str,
+                data.get("status", "ACTIVE")
+            ))
+            conn.commit()
+            new_id = cursor.lastrowid
+            return jsonify({"message": "Alert created successfully", "id": new_id}), 201
+    finally:
         conn.close()
-        return jsonify(rows)
-
-    elif request.method == "POST":
-        data = request.json or {}
-        now = datetime.now()
-        date_str = data.get("date", now.strftime("%Y-%m-%d"))
-        time_str = data.get("time", now.strftime("%H:%M:%S"))
-
-        cursor.execute("""
-            INSERT INTO alerts (title, description, location, risk_level, alert_type, date, time, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data.get("title", "Flood Advisory"),
-            data.get("description", ""),
-            data.get("location", "District Wide"),
-            data.get("risk_level", "HIGH"),
-            data.get("alert_type", "Flood Risk Alert"),
-            date_str,
-            time_str,
-            data.get("status", "ACTIVE")
-        ))
-        conn.commit()
-        new_id = cursor.lastrowid
-        conn.close()
-        return jsonify({"message": "Alert created successfully", "id": new_id}), 201
 
 @app.route("/api/alerts/<int:alert_id>", methods=["PUT", "DELETE"])
 def handle_alert_by_id(alert_id):
     conn = get_connection()
     cursor = conn.cursor()
+    try:
+        if request.method == "PUT":
+            data = request.json or {}
+            set_clauses = []
+            params = []
+            for col in ["title", "description", "risk_level", "alert_type", "location", "status"]:
+                if col in data:
+                    set_clauses.append(f"{col} = ?")
+                    params.append(data[col])
+            if set_clauses:
+                params.append(alert_id)
+                cursor.execute(f"UPDATE alerts SET {', '.join(set_clauses)} WHERE id = ?", params)
+                conn.commit()
+            return jsonify({"message": "Alert updated successfully"})
 
-    if request.method == "PUT":
-        data = request.json or {}
-        cursor.execute("""
-            UPDATE alerts SET
-                title = COALESCE(?, title),
-                description = COALESCE(?, description),
-                risk_level = COALESCE(?, risk_level),
-                status = COALESCE(?, status)
-            WHERE id = ?
-        """, (data.get("title"), data.get("description"), data.get("risk_level"), data.get("status"), alert_id))
-        conn.commit()
+        elif request.method == "DELETE":
+            cursor.execute("DELETE FROM alerts WHERE id = ?", (alert_id,))
+            conn.commit()
+            return jsonify({"message": "Alert deleted successfully"})
+    finally:
         conn.close()
-        return jsonify({"message": "Alert updated successfully"})
-
-    elif request.method == "DELETE":
-        cursor.execute("DELETE FROM alerts WHERE id = ?", (alert_id,))
-        conn.commit()
-        conn.close()
-        return jsonify({"message": "Alert deleted successfully"})
 
 # =============================================================================
 # REST API: SAFE LOCATIONS (CRUD)
@@ -441,81 +441,82 @@ def handle_alert_by_id(alert_id):
 def handle_safe_locations():
     conn = get_connection()
     cursor = conn.cursor()
+    try:
+        if request.method == "GET":
+            cursor.execute("SELECT * FROM safe_locations ORDER BY capacity DESC")
+            rows = [dict(r) for r in cursor.fetchall()]
+            return jsonify(rows)
 
-    if request.method == "GET":
-        cursor.execute("SELECT * FROM safe_locations ORDER BY capacity DESC")
-        rows = [dict(r) for r in cursor.fetchall()]
+        elif request.method == "POST":
+            data = request.json or {}
+            cursor.execute("""
+                INSERT INTO safe_locations (location_name, type, latitude, longitude, capacity, current_occupancy, contact, address, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                data.get("location_name"),
+                data.get("type", "Emergency Shelter"),
+                float(data.get("latitude", 10.0)),
+                float(data.get("longitude", 76.3)),
+                int(data.get("capacity", 500)),
+                int(data.get("current_occupancy", 0)),
+                data.get("contact", ""),
+                data.get("address", ""),
+                data.get("status", "OPEN")
+            ))
+            conn.commit()
+            new_id = cursor.lastrowid
+            return jsonify({"message": "Safe location created", "id": new_id}), 201
+    finally:
         conn.close()
-        return jsonify(rows)
-
-    elif request.method == "POST":
-        data = request.json or {}
-        cursor.execute("""
-            INSERT INTO safe_locations (location_name, type, latitude, longitude, capacity, current_occupancy, contact, address, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data.get("location_name"),
-            data.get("type", "Emergency Shelter"),
-            float(data.get("latitude", 10.0)),
-            float(data.get("longitude", 76.3)),
-            int(data.get("capacity", 500)),
-            int(data.get("current_occupancy", 0)),
-            data.get("contact", ""),
-            data.get("address", ""),
-            data.get("status", "OPEN")
-        ))
-        conn.commit()
-        new_id = cursor.lastrowid
-        conn.close()
-        return jsonify({"message": "Safe location created", "id": new_id}), 201
 
 @app.route("/api/safe-locations/<int:location_id>", methods=["GET", "PUT", "DELETE"])
 def handle_safe_location_item(location_id):
     conn = get_connection()
     cursor = conn.cursor()
-    if request.method == "GET":
-        cursor.execute("SELECT * FROM safe_locations WHERE id = ?", (location_id,))
-        row = cursor.fetchone()
-        conn.close()
-        if not row:
-            return jsonify({"error": "Safe location not found"}), 404
-        return jsonify(dict(row))
+    try:
+        if request.method == "GET":
+            cursor.execute("SELECT * FROM safe_locations WHERE id = ?", (location_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({"error": "Safe location not found"}), 404
+            return jsonify(dict(row))
 
-    elif request.method == "PUT":
-        data = request.json or {}
-        cursor.execute("""
-            UPDATE safe_locations
-            SET location_name = COALESCE(?, location_name),
-                type = COALESCE(?, type),
-                latitude = COALESCE(?, latitude),
-                longitude = COALESCE(?, longitude),
-                capacity = COALESCE(?, capacity),
-                current_occupancy = COALESCE(?, current_occupancy),
-                contact = COALESCE(?, contact),
-                address = COALESCE(?, address),
-                status = COALESCE(?, status)
-            WHERE id = ?
-        """, (
-            data.get("location_name"),
-            data.get("type"),
-            float(data["latitude"]) if "latitude" in data and data["latitude"] is not None else None,
-            float(data["longitude"]) if "longitude" in data and data["longitude"] is not None else None,
-            int(data["capacity"]) if "capacity" in data and data["capacity"] is not None else None,
-            int(data["current_occupancy"]) if "current_occupancy" in data and data["current_occupancy"] is not None else None,
-            data.get("contact"),
-            data.get("address"),
-            data.get("status"),
-            location_id
-        ))
-        conn.commit()
-        conn.close()
-        return jsonify({"message": "Safe location updated"})
+        elif request.method == "PUT":
+            data = request.json or {}
+            updatable = {
+                "location_name": lambda v: str(v) if v is not None else None,
+                "type": lambda v: str(v) if v is not None else None,
+                "latitude": lambda v: float(v) if v is not None else None,
+                "longitude": lambda v: float(v) if v is not None else None,
+                "capacity": lambda v: int(v) if v is not None else None,
+                "current_occupancy": lambda v: int(v) if v is not None else None,
+                "contact": lambda v: str(v) if v is not None else None,
+                "address": lambda v: str(v) if v is not None else None,
+                "status": lambda v: str(v) if v is not None else None,
+            }
+            set_clauses = []
+            params = []
+            for col, cast_fn in updatable.items():
+                if col in data:
+                    try:
+                        val = cast_fn(data[col])
+                    except (ValueError, TypeError):
+                        val = None
+                    set_clauses.append(f"{col} = ?")
+                    params.append(val)
 
-    elif request.method == "DELETE":
-        cursor.execute("DELETE FROM safe_locations WHERE id = ?", (location_id,))
-        conn.commit()
+            if set_clauses:
+                params.append(location_id)
+                cursor.execute(f"UPDATE safe_locations SET {', '.join(set_clauses)} WHERE id = ?", params)
+                conn.commit()
+            return jsonify({"message": "Safe location updated"})
+
+        elif request.method == "DELETE":
+            cursor.execute("DELETE FROM safe_locations WHERE id = ?", (location_id,))
+            conn.commit()
+            return jsonify({"message": "Safe location removed"})
+    finally:
         conn.close()
-        return jsonify({"message": "Safe location removed"})
 
 # =============================================================================
 # REST API: HOSPITALS
@@ -822,7 +823,7 @@ def export_dataset(dataset):
 
     table_map = {
         "flood-areas": ("flood_areas", ["id", "area_name", "district", "latitude", "longitude", "risk_level", "rainfall", "water_level", "elevation", "distance_to_river"]),
-        "alerts": ("alerts", ["id", "title", "risk_level", "district", "message", "status", "created_at"]),
+        "alerts": ("alerts", ["id", "title", "risk_level", "location", "description", "alert_type", "date", "time", "status", "created_at"]),
         "safe-locations": ("safe_locations", ["id", "location_name", "type", "latitude", "longitude", "capacity", "current_occupancy", "contact", "status"]),
         "hospitals": ("hospitals", ["id", "hospital_name", "latitude", "longitude", "total_beds", "available_beds", "contact", "status"]),
         "rivers": ("river_data", ["id", "river_name", "water_level", "warning_level", "danger_level", "status", "last_updated"])
@@ -832,10 +833,12 @@ def export_dataset(dataset):
         conn.close()
         return jsonify({"error": f"Invalid dataset: {dataset}. Valid datasets: {', '.join(table_map.keys())}"}), 404
 
-    tbl, cols = table_map[dataset]
-    cursor.execute(f"SELECT {', '.join(cols)} FROM {tbl}")
-    rows = [dict(r) for r in cursor.fetchall()]
-    conn.close()
+    try:
+        tbl, cols = table_map[dataset]
+        cursor.execute(f"SELECT {', '.join(cols)} FROM {tbl}")
+        rows = [dict(r) for r in cursor.fetchall()]
+    finally:
+        conn.close()
 
     if fmt == "json":
         return jsonify(rows)
@@ -1257,30 +1260,38 @@ def api_navigation_route():
             d_lat = dest_lat - origin_lat
             d_lng = dest_lng - origin_lng
             norm = (d_lat**2 + d_lng**2)**0.5 or 1.0
-            detour_lat = h_lat + (-d_lng / norm) * 0.08  # ~9km detour offset
-            detour_lng = h_lng + (d_lat / norm) * 0.08
 
-            detour_url = (
-                f"https://router.project-osrm.org/route/v1/driving/"
-                f"{origin_lng},{origin_lat};{detour_lng:.5f},{detour_lat:.5f};{dest_lng},{dest_lat}?"
-                f"overview=full&geometries=geojson&steps=true"
-            )
-            try:
-                d_req = urllib.request.Request(detour_url, headers={"User-Agent": "FloodGuard-Navigation/2.0"})
-                with urllib.request.urlopen(d_req, timeout=8) as d_resp:
-                    d_data = json.loads(d_resp.read().decode("utf-8"))
-                    if d_data.get("code") == "Ok" and d_data.get("routes"):
-                        d_route = d_data["routes"][0]
-                        safe_result = {
-                            "distance_km": round(d_route.get("distance", 0) / 1000.0, 2),
-                            "duration_min": round(d_route.get("duration", 0) / 60.0, 1),
-                            "is_safe": True,
-                            "geometry": d_route.get("geometry"),
-                            "detour_info": f"Safe bypass via highland roads circumventing {hazard_name}.",
-                            "steps": format_osrm_steps(d_route)
-                        }
-            except Exception:
-                pass
+            # Generate both perpendicular directions to avoid routing into ocean (BUG-026)
+            candidates = [
+                (h_lat + (-d_lng / norm) * 0.08, h_lng + (d_lat / norm) * 0.08),
+                (h_lat - (-d_lng / norm) * 0.08, h_lng - (d_lat / norm) * 0.08)
+            ]
+            # Sort candidates by proximity to Indian central interior longitude (~78.9°E) to prefer mainland roads
+            candidates.sort(key=lambda pt: abs(pt[1] - 78.9629))
+
+            for detour_lat, detour_lng in candidates:
+                detour_url = (
+                    f"https://router.project-osrm.org/route/v1/driving/"
+                    f"{origin_lng},{origin_lat};{detour_lng:.5f},{detour_lat:.5f};{dest_lng},{dest_lat}?"
+                    f"overview=full&geometries=geojson&steps=true"
+                )
+                try:
+                    d_req = urllib.request.Request(detour_url, headers={"User-Agent": "FloodGuard-Navigation/2.0"})
+                    with urllib.request.urlopen(d_req, timeout=8) as d_resp:
+                        d_data = json.loads(d_resp.read().decode("utf-8"))
+                        if d_data.get("code") == "Ok" and d_data.get("routes"):
+                            d_route = d_data["routes"][0]
+                            safe_result = {
+                                "distance_km": round(d_route.get("distance", 0) / 1000.0, 2),
+                                "duration_min": round(d_route.get("duration", 0) / 60.0, 1),
+                                "is_safe": True,
+                                "geometry": d_route.get("geometry"),
+                                "detour_info": f"Safe bypass via highland roads circumventing {hazard_name}.",
+                                "steps": format_osrm_steps(d_route)
+                            }
+                            break
+                except Exception:
+                    continue
 
     return jsonify({
         "status": "success",
@@ -1419,28 +1430,58 @@ def login():
 
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
-    user = cursor.fetchone()
+    try:
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
 
-    if user and verify_password(password, user["password_hash"]):
-        if not user["password_hash"].startswith("pbkdf2_sha256$"):
-            cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(password), user["id"]))
-            conn.commit()
+        if user and verify_password(password, user["password_hash"]):
+            if not user["password_hash"].startswith("pbkdf2_sha256$"):
+                cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(password), user["id"]))
+                conn.commit()
+            session.clear()
+            session["user_id"] = user["id"]
+            session["role"] = user["role"]
+            return jsonify({
+                "status": "success",
+                "user": {
+                    "id": user["id"],
+                    "name": user["name"],
+                    "email": user["email"],
+                    "role": user["role"]
+                }
+            })
+        return jsonify({"status": "error", "message": "Invalid email or password"}), 401
+    finally:
         conn.close()
-        session.clear()
-        session["user_id"] = user["id"]
-        session["role"] = user["role"]
-        return jsonify({
-            "status": "success",
-            "user": {
-                "id": user["id"],
-                "name": user["name"],
-                "email": user["email"],
-                "role": user["role"]
-            }
+
+# In-memory cache for Nominatim geocoding proxy (BUG-030)
+_geocode_cache = {}
+
+@app.route("/api/geocode", methods=["GET"])
+def api_geocode():
+    """Proxy Nominatim geocode searches to prevent direct client IP exposure and rate limit issues (BUG-030)."""
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify([])
+
+    cache_key = q.lower()
+    if cache_key in _geocode_cache:
+        return jsonify(_geocode_cache[cache_key])
+
+    import urllib.parse
+    encoded_q = urllib.parse.quote(q)
+    url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded_q}&countrycodes=in&limit=5"
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "FloodGuard-GIS-India/2.0 (Disaster Risk Management Prototype; contact: admin@floodguard.org)",
+            "Accept-Language": "en"
         })
-    conn.close()
-    return jsonify({"status": "error", "message": "Invalid email or password"}), 401
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            _geocode_cache[cache_key] = data
+            return jsonify(data)
+    except Exception:
+        return jsonify([])
 
 
 @app.route("/api/auth/logout", methods=["POST"])

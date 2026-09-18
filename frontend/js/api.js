@@ -3,7 +3,9 @@
  * Clean REST API client with error handling and fallback capabilities.
  */
 
-const API_BASE_URL = window.location.origin.includes("http") ? "" : "http://127.0.0.1:5000";
+const API_BASE_URL = (typeof window !== "undefined" && window.location && (window.location.protocol === "http:" || window.location.protocol === "https:"))
+  ? ""
+  : "http://127.0.0.1:5000";
 
 const API = {
   async fetchJson(endpoint, options = {}) {
@@ -326,6 +328,14 @@ const API = {
   },
 
   async geocodeSearch(query) {
+    if (!query || !query.trim()) return [];
+    try {
+      const q = encodeURIComponent(query.trim());
+      const data = await this.fetchJson(`/api/geocode?q=${q}`);
+      if (Array.isArray(data) && data.length > 0) return data;
+    } catch (err) {
+      console.warn("Proxy geocode failed, attempting direct fallback:", err);
+    }
     try {
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=5`;
       const res = await fetch(url, { headers: { "Accept-Language": "en" } });
