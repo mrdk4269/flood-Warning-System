@@ -2145,7 +2145,8 @@ const FloodDataService = {
       period: p,
       state: st || "all",
       district: dist || "all",
-      basin: b || "all"
+      basin: b || "all",
+      catalog: "true"
     };
 
     const cacheKey = JSON.stringify(params);

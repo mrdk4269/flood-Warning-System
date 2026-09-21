@@ -328,8 +328,8 @@ class TestFloodGuard(unittest.TestCase):
 
     def test_flood_effect_areas_api(self):
         """Verify /api/flood-effect-areas temporal & geographic spatial GeoJSON endpoints."""
-        # 1. Default (today)
-        res = self.client.get("/api/flood-effect-areas?period=today")
+        # 1. Default (today) with catalog=true for deterministic testing
+        res = self.client.get("/api/flood-effect-areas?period=today&catalog=true")
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
         self.assertEqual(data.get("type"), "FeatureCollection")
